@@ -35,10 +35,12 @@ interface CartContextType {
   totalItemCount: number;
 
   // Wishlist
-  wishlist: string[]; // product IDs
-  toggleWishlist: (productId: string) => void;
-  isInWishlist: (productId: string) => boolean;
+  wishlist: string[]; // product IDs / slugs
+  toggleWishlist: (productIdOrSlug: string, slug?: string) => void;
+  isInWishlist: (productIdOrSlug: string, slug?: string) => boolean;
+  clearWishlist: () => void;
   wishlistCount: number;
+  isHydrated: boolean;
 
   // Toasts
   toasts: ToastItem[];
@@ -237,20 +239,34 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     setAppliedPromo(null);
   };
 
-  const toggleWishlist = (productId: string) => {
+  const toggleWishlist = (productIdOrSlug: string, slug?: string) => {
+    const targetKey = slug || productIdOrSlug;
     setWishlist((prev) => {
-      const exists = prev.includes(productId);
-      if (exists) {
+      const isAlreadyIn = prev.some(
+        (item) => item === targetKey || item === productIdOrSlug || (slug && item === slug)
+      );
+      if (isAlreadyIn) {
         showToast("Removed item from your wishlist");
-        return prev.filter((id) => id !== productId);
+        return prev.filter(
+          (item) => item !== targetKey && item !== productIdOrSlug && (slug ? item !== slug : true)
+        );
       } else {
         showToast("Added item to your wishlist");
-        return [...prev, productId];
+        return [...prev, targetKey];
       }
     });
   };
 
-  const isInWishlist = (productId: string) => wishlist.includes(productId);
+  const isInWishlist = (productIdOrSlug: string, slug?: string) => {
+    return wishlist.some(
+      (item) => item === productIdOrSlug || (slug && item === slug)
+    );
+  };
+
+  const clearWishlist = () => {
+    setWishlist([]);
+    showToast("Cleared your wishlist");
+  };
 
   // Calculations
   const subtotal = cart.reduce(
@@ -312,7 +328,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
         wishlist,
         toggleWishlist,
         isInWishlist,
+        clearWishlist,
         wishlistCount: wishlist.length,
+        isHydrated,
         toasts,
         showToast,
         dismissToast,

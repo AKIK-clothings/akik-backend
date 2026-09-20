@@ -210,7 +210,11 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
                   <span className="text-xs text-[#C47D5A]">WhatsApp</span>
                 </Link>
 
-                <div className="flex items-center justify-between py-1.5 text-sm font-medium text-[#1F1E1D]">
+                <Link
+                  href="/wishlist"
+                  onClick={onClose}
+                  className="flex items-center justify-between py-1.5 text-sm font-medium text-[#1F1E1D] hover:text-[#C47D5A] transition-colors"
+                >
                   <span className="flex items-center gap-2">
                     <Heart className="w-4 h-4 text-[#C47D5A]" />
                     Wishlist
@@ -218,7 +222,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
                   <span className="text-xs px-2 py-0.5 rounded-full bg-[#F4EFEA] font-bold">
                     {wishlistCount}
                   </span>
-                </div>
+                </Link>
 
                 <button
                   onClick={() => {

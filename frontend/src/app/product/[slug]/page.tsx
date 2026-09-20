@@ -15,6 +15,7 @@ import {
   Truck,
   RotateCcw,
   Sparkles,
+  Heart,
 } from "lucide-react";
 import { MOCK_PRODUCTS } from "@/data/mockProducts";
 import { ImageGallery } from "@/components/product/ImageGallery";
@@ -30,7 +31,7 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const slug = params?.slug as string;
 
-  const { addToCart } = useCart();
+  const { addToCart, isInWishlist, toggleWishlist } = useCart();
 
   // Find fallback from mock
   const fallbackProduct = useMemo(() => {
@@ -39,6 +40,8 @@ export default function ProductDetailPage() {
 
   const [product, setProduct] = useState<Product | null>(fallbackProduct);
   const [isLoading, setIsLoading] = useState(!fallbackProduct);
+
+  const isFavorited = product ? isInWishlist(product.id, product.slug) : false;
 
   useEffect(() => {
     let isMounted = true;
@@ -411,22 +414,39 @@ export default function ProductDetailPage() {
 
             {/* CTA Buttons (Add to Bag & Buy It Now) */}
             <div className="space-y-3 pt-2">
-              {/* Primary Add to Bag button */}
-              <button
-                type="button"
-                disabled={product.isSoldOut || isSizeOutOfStock}
-                onClick={handleAddToCart}
-                className="w-full flex items-center justify-center gap-2.5 py-4 px-6 bg-[#1F1E1D] hover:bg-[#C47D5A] text-[#FAF9F6] text-xs font-semibold uppercase tracking-widest rounded-md shadow-lg transition-all duration-300 active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span>
-                  {product.isSoldOut
-                    ? "SOLD OUT"
-                    : isSizeOutOfStock
-                    ? "SIZE OUT OF STOCK"
-                    : "Add to Bag"}
-                </span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={product.isSoldOut || isSizeOutOfStock}
+                  onClick={handleAddToCart}
+                  className="flex-1 flex items-center justify-center gap-2.5 py-4 px-6 bg-[#1F1E1D] hover:bg-[#C47D5A] text-[#FAF9F6] text-xs font-semibold uppercase tracking-widest rounded-md shadow-lg transition-all duration-300 active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>
+                    {product.isSoldOut
+                      ? "SOLD OUT"
+                      : isSizeOutOfStock
+                      ? "SIZE OUT OF STOCK"
+                      : "Add to Bag"}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => product && toggleWishlist(product.id, product.slug)}
+                  aria-label={isFavorited ? "Remove from wishlist" : "Add to wishlist"}
+                  className="p-3.5 rounded-md border border-[#EAE5DE] hover:border-[#C47D5A] bg-white text-[#1F1E1D] transition-all flex items-center justify-center hover:bg-[#F4EFEA] active:scale-95 shadow-sm"
+                  title={isFavorited ? "Remove from wishlist" : "Add to wishlist"}
+                >
+                  <Heart
+                    className={`w-5 h-5 transition-colors ${
+                      isFavorited
+                        ? "fill-[#C47D5A] text-[#C47D5A]"
+                        : "text-[#1F1E1D] hover:text-[#C47D5A]"
+                    }`}
+                  />
+                </button>
+              </div>
 
               {/* Secondary Buy It Now Instant Checkout Button */}
               {!product.isSoldOut && !isSizeOutOfStock && (

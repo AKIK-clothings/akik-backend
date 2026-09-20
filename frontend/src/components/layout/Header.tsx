@@ -255,7 +255,7 @@ export const Header: React.FC = () => {
 
               {/* Wishlist Counter */}
               <Link
-                href="/collections"
+                href="/wishlist"
                 aria-label={`Wishlist containing ${wishlistCount} items`}
                 className={`p-1.5 rounded-full transition-colors relative ${
                   isTransparent

@@ -31,7 +31,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   // Added-to-cart micro-interaction feedback state
   const [addedSizeFeedback, setAddedSizeFeedback] = useState<string | null>(null);
 
-  const isFavorited = isInWishlist(product.id);
+  const isFavorited = isInWishlist(product.id, product.slug);
 
   // Discount percentage auto-calculation
   const discountPercentage =
@@ -120,7 +120,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            toggleWishlist(product.id);
+            toggleWishlist(product.id, product.slug);
           }}
           aria-label={isFavorited ? "Remove from wishlist" : "Add to wishlist"}
           className="absolute top-2.5 right-2.5 z-20 p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-md hover:bg-white text-[#1F1E1D] hover:scale-110 active:scale-95 transition-all"
