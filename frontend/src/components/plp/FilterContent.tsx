@@ -21,9 +21,12 @@ interface FilterContentProps {
   hasActiveFilters: boolean;
 }
 
-const EMBROIDERED_SUBS = ["Embroidered Satin with Dupatta"];
-const LUXURY_SUBS = ["Luxury Cotton Satin"];
-const LUCKNOWI_SUBS = ["Satin Lucknowi"];
+const SHARED_SUBCATEGORIES = [
+  "Embroidered Satin with Dupatta",
+  "Luxury Cotton Satin",
+  "Satin Lucknowi Collection",
+  "Rose Royale Collection",
+];
 
 const ALL_SIZES: ApparelSize[] = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
@@ -43,17 +46,7 @@ export const FilterContent: React.FC<FilterContentProps> = ({
   onResetFilters,
   hasActiveFilters,
 }) => {
-  // Determine applicable subcategories based on active collection
-  let availableSubs: string[] = [];
-  if (selectedCollection === "embroidered-satin") {
-    availableSubs = EMBROIDERED_SUBS;
-  } else if (selectedCollection === "luxury-cotton-satin") {
-    availableSubs = LUXURY_SUBS;
-  } else if (selectedCollection === "satin-lucknowi") {
-    availableSubs = LUCKNOWI_SUBS;
-  } else {
-    availableSubs = [...EMBROIDERED_SUBS, ...LUXURY_SUBS, ...LUCKNOWI_SUBS];
-  }
+  const availableSubs = SHARED_SUBCATEGORIES;
 
   return (
     <div className="space-y-6 text-sm font-sans text-[#1F1E1D]">
@@ -81,9 +74,9 @@ export const FilterContent: React.FC<FilterContentProps> = ({
         <div className="flex flex-col gap-1.5">
           {[
             { id: "all", label: "All Collections" },
-            { id: "embroidered-satin", label: "Embroidered Satin with Dupatta (₹2,500)" },
-            { id: "luxury-cotton-satin", label: "Luxury Cotton Satin (₹2,000)" },
-            { id: "satin-lucknowi", label: "Satin Lucknowi Collection (₹2,250)" },
+            { id: "stitched", label: "Stitched" },
+            { id: "unstitched", label: "Unstitched" },
+            { id: "kids", label: "Kids" },
           ].map((col) => (
             <label
               key={col.id}
@@ -136,31 +129,33 @@ export const FilterContent: React.FC<FilterContentProps> = ({
         </div>
       </div>
 
-      {/* 3. Size Filter: Checkbox Chips (S, M, L, XL, XXL, XXXL) */}
-      <div className="pt-3 border-t border-[#EAE5DE]">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-[#75706B] mb-2.5">
-          Size
-        </h4>
-        <div className="grid grid-cols-3 gap-1.5">
-          {ALL_SIZES.map((sz) => {
-            const isSelected = selectedSizes.includes(sz);
-            return (
-              <button
-                key={sz}
-                type="button"
-                onClick={() => onToggleSize(sz)}
-                className={`py-1.5 px-2 text-xs font-semibold rounded border transition-all ${
-                  isSelected
-                    ? "bg-[#1F1E1D] text-white border-[#1F1E1D]"
-                    : "bg-white text-[#1F1E1D] border-[#EAE5DE] hover:border-[#C47D5A]"
-                }`}
-              >
-                {sz}
-              </button>
-            );
-          })}
+      {/* 3. Size Filter (Hidden if unstitched selected) */}
+      {selectedCollection !== "unstitched" && (
+        <div className="pt-3 border-t border-[#EAE5DE]">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[#75706B] mb-2.5">
+            Size
+          </h4>
+          <div className="grid grid-cols-3 gap-1.5">
+            {ALL_SIZES.map((sz) => {
+              const isSelected = selectedSizes.includes(sz);
+              return (
+                <button
+                  key={sz}
+                  type="button"
+                  onClick={() => onToggleSize(sz)}
+                  className={`py-1.5 px-2 text-xs font-semibold rounded border transition-all ${
+                    isSelected
+                      ? "bg-[#1F1E1D] text-white border-[#1F1E1D]"
+                      : "bg-white text-[#1F1E1D] border-[#EAE5DE] hover:border-[#C47D5A]"
+                  }`}
+                >
+                  {sz}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 4. Color Picker Filter: Clickable Swatches */}
       <div className="pt-3 border-t border-[#EAE5DE]">

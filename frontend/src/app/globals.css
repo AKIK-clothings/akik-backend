@@ -52,3 +52,24 @@ body {
   outline: 2px solid #C47D5A;
   outline-offset: 2px;
 }
+
+/* Infinite Marquee Animation (Right to Left) */
+@keyframes marquee-scroll-left {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-left {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll-left 34s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-left:hover {
+  animation-play-state: paused;
+}

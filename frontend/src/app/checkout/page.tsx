@@ -197,7 +197,7 @@ export default function CheckoutPage() {
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           try {
             // Step 3: Verify payment & save order
-            const { orderNumber, adminWhatsAppUrl } = await api.verifyPayment({
+            const { orderNumber, customerWhatsAppUrl } = await api.verifyPayment({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
@@ -209,14 +209,15 @@ export default function CheckoutPage() {
               promoCode: appliedPromo?.code,
             });
 
-            // Notify admin via WhatsApp if url configured
-            if (adminWhatsAppUrl) {
-              window.open(adminWhatsAppUrl, "_blank", "noopener,noreferrer");
+            // Open WA on the customer's own number with their order receipt
+            if (customerWhatsAppUrl) {
+              window.open(customerWhatsAppUrl, "_blank", "noopener,noreferrer");
             }
 
-            // Clear cart and redirect to success
+            // Clear cart and redirect to success (pass wa URL as fallback for blocked popups)
             clearCart();
-            router.push(`/checkout/success?order=${orderNumber}`);
+            const waParam = customerWhatsAppUrl ? `&wa=${encodeURIComponent(customerWhatsAppUrl)}` : "";
+            router.push(`/checkout/success?order=${orderNumber}${waParam}`);
           } catch (err) {
             setError("Payment was successful but we couldn't save your order. Please WhatsApp us immediately with your payment ID: " + response.razorpay_payment_id);
             console.error(err);

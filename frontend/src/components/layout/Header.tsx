@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { MegaMenu } from "./MegaMenu";
 import { MobileNav } from "./MobileNav";
+import { AnnouncementBar } from "./AnnouncementBar";
 import { NAVIGATION_CATEGORIES } from "@/data/navigationData";
 import { MegaMenuCategory } from "@/types/navigation";
 import { useCart } from "@/context/CartContext";
@@ -93,6 +94,9 @@ export const Header: React.FC = () => {
             : "bg-[#FAF9F6] text-[#1F1E1D] border-b border-[#EAE5DE]/60"
         }`}
       >
+        {/* Continuous Right-to-Left Marquee Announcement */}
+        <AnnouncementBar />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-12 sm:h-13">
             {/* Left: Mobile Menu Toggle & Brand Logo */}

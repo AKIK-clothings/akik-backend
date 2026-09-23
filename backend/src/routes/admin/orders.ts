@@ -13,7 +13,7 @@ router.use(requireAdmin);
 // GET /api/admin/orders — List all orders with filters
 router.get("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { status, page = "1", limit = "20" } = req.query;
+    const { status, page = "1", limit = "20", date } = req.query;
     const pageNum = Math.max(1, Number(page));
     const limitNum = Math.min(100, Number(limit));
     const from = (pageNum - 1) * limitNum;
@@ -27,6 +27,18 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 
     if (status && status !== "all") {
       query = query.eq("status", status as string);
+    }
+
+    // Date filter: treat YYYY-MM-DD as IST day (UTC+5:30)
+    if (date && typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      // IST start of day = date T00:00:00+05:30 = date-1 T18:30:00Z
+      // IST end of day   = date T23:59:59+05:30 = date   T18:29:59Z
+      const [y, m, d] = date.split("-").map(Number);
+      const istStart = new Date(Date.UTC(y, m - 1, d) - 5.5 * 60 * 60 * 1000);
+      const istEnd   = new Date(istStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+      query = query
+        .gte("created_at", istStart.toISOString())
+        .lte("created_at", istEnd.toISOString());
     }
 
     const { data: orders, error, count } = await query;

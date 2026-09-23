@@ -178,7 +178,7 @@ function CollectionsContent() {
 
       // Size multi-select
       if (sizeParam.length > 0) {
-        const hasMatchingSize = sizeParam.some((sz) => product.sizes.includes(sz));
+        const hasMatchingSize = sizeParam.some((sz) => product.sizes?.includes(sz));
         if (!hasMatchingSize) return false;
       }
 
@@ -234,12 +234,12 @@ function CollectionsContent() {
   ]);
 
   const activeCollectionTitle =
-    collectionParam === "embroidered-satin"
-      ? "Embroidered Satin with Dupatta (₹2,500)"
-      : collectionParam === "luxury-cotton-satin"
-      ? "Luxury Cotton Satin Catalogue (₹2,000)"
-      : collectionParam === "satin-lucknowi"
-      ? "Satin Lucknowi Collection (₹2,250)"
+    collectionParam === "stitched"
+      ? "Stitched Collection"
+      : collectionParam === "unstitched"
+      ? "Unstitched Collection"
+      : collectionParam === "kids"
+      ? "Kids Collection"
       : "All Curated Collections";
 
   return (

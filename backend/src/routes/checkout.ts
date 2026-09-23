@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { razorpay } from "../config/razorpay";
 import { supabase } from "../config/supabase";
 import { getNextOrderNumber } from "../utils/orderNumber";
-import { buildAdminWhatsAppMessage } from "../utils/whatsapp";
+import { buildAdminWhatsAppMessage, buildCustomerWhatsAppMessage } from "../utils/whatsapp";
 import { checkoutLimiter } from "../middleware/rateLimit";
 import {
   validateBody,
@@ -384,10 +384,29 @@ router.post(
         .update({ whatsapp_notified: true })
         .eq("id", order.id);
 
-      // HIGH-13: Do not return admin WhatsApp URL containing full customer PII to browser client
+      // Build customer WA confirmation URL (sent TO the customer's own phone)
+      const customerWhatsAppUrl = buildCustomerWhatsAppMessage({
+        orderNumber,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        address: fullAddress,
+        items: verified.verifiedItems.map((item) => ({
+          name: item.name,
+          selectedSize: item.selectedSize,
+          selectedColor: item.selectedColor.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+        finalTotal: verified.finalTotal,
+        shippingFee: verified.shippingFee,
+        promoCode: verified.appliedPromoCode,
+        couponDiscount: verified.couponDiscount || 0,
+      });
+
       res.json({
         success: true,
         orderNumber,
+        customerWhatsAppUrl,
         message: "Payment verified and order placed successfully!",
       });
     } catch (err: any) {

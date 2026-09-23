@@ -119,7 +119,7 @@ export const adminProductCreateSchema = z.object({
   secondaryImage: z.string().trim().max(2048).optional().default(""),
   galleryImages: z.array(z.string().max(2048)).optional().default([]),
   sizes: z.array(z.string().max(20)).optional().default([]),
-  sizeStockMap: z.record(z.string(), z.number().int().nonnegative()).optional().default({}),
+  sizeStockMap: z.record(z.string(), z.union([z.boolean(), z.number()])).optional().default({}),
   colorVariants: z.array(z.any()).optional().default([]),
   accordions: z.record(z.string(), z.any()).optional().default({}),
   isNewArrival: z.boolean().optional().default(false),

@@ -6,19 +6,26 @@ import { Upload, X, Loader2, Plus, Minus } from "lucide-react";
 import { adminApi } from "@/lib/api";
 
 const CATEGORIES = [
-  { value: "embroidered-satin", label: "Embroidered Satin with Dupatta" },
-  { value: "luxury-cotton-satin", label: "Luxury Cotton Satin" },
-  { value: "satin-lucknowi", label: "Satin Lucknowi" },
+  { value: "stitched", label: "Stitched" },
+  { value: "unstitched", label: "Unstitched" },
+  { value: "kids", label: "Kids" },
 ];
 
-const SIZES = ["S", "M", "L", "XL", "XXL", "XXXL", "Free Size", "Unstitched"];
+const SUBCATEGORIES = [
+  "Embroidered Satin with Dupatta",
+  "Luxury Cotton Satin",
+  "Satin Lucknowi Collection",
+  "Rose Royale Collection",
+];
+
+const SIZES = ["S", "M", "L", "XL", "XXL", "XXXL", "Free Size"];
 
 export default function AdminNewProductPage() {
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
-    name: "", category: "embroidered-satin", subcategory: "",
+    name: "", category: "unstitched", subcategory: "Embroidered Satin with Dupatta",
     regularPrice: "", discountedPrice: "",
     description: "", fabricDetails: "", dimensions: "",
     sku: "", isNewArrival: false, isBestSeller: false, isFeatured: false, isActive: true,
@@ -67,8 +74,12 @@ export default function AdminNewProductPage() {
     setIsSubmitting(true);
 
     try {
+      const isUnstitched = form.category === "unstitched";
+      const finalSizes = isUnstitched ? [] : selectedSizes;
       const sizeStockMap: Record<string, boolean> = {};
-      selectedSizes.forEach((s) => { sizeStockMap[s] = true; });
+      if (!isUnstitched) {
+        finalSizes.forEach((s) => { sizeStockMap[s] = true; });
+      }
 
       // Step 1: Create product record
       const { product } = await adminApi.createProduct({
@@ -77,7 +88,7 @@ export default function AdminNewProductPage() {
         subcategory: form.subcategory,
         regularPrice: Number(form.regularPrice) || Number(form.discountedPrice),
         discountedPrice: Number(form.discountedPrice),
-        sizes: selectedSizes,
+        sizes: finalSizes,
         sizeStockMap,
         colorVariants: colorVariants.filter((c) => c.name),
         sku: form.sku,
@@ -149,10 +160,11 @@ export default function AdminNewProductPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">Subcategory</label>
-              <input name="subcategory" value={form.subcategory} onChange={handleChange}
-                placeholder="e.g. Embroidered Satin with Dupatta"
-                className="w-full px-3 py-2.5 border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] transition-colors" />
+              <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">Subcategory *</label>
+              <select name="subcategory" value={form.subcategory} onChange={handleChange}
+                className="w-full px-3 py-2.5 border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] bg-white transition-colors">
+                {SUBCATEGORIES.map((sub) => <option key={sub} value={sub}>{sub}</option>)}
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -204,18 +216,24 @@ export default function AdminNewProductPage() {
         {/* Sizes */}
         <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-3">
           <h2 className="font-semibold text-[#1A1918]">Available Sizes</h2>
-          <div className="flex flex-wrap gap-2">
-            {SIZES.map((size) => (
-              <button key={size} type="button" onClick={() => toggleSize(size)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  selectedSizes.includes(size)
-                    ? "bg-[#1A1918] text-white border-[#1A1918]"
-                    : "bg-white text-[#75706B] border-[#EAE5DE] hover:border-[#1A1918]"
-                }`}>
-                {size}
-              </button>
-            ))}
-          </div>
+          {form.category === "unstitched" ? (
+            <p className="text-xs text-[#75706B] bg-[#FAF9F6] p-3 rounded-lg border border-[#EAE5DE]">
+              Unstitched category does not require sizes. Products in this category are standard full fabric cuts.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {SIZES.map((size) => (
+                <button key={size} type="button" onClick={() => toggleSize(size)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    selectedSizes.includes(size)
+                      ? "bg-[#1A1918] text-white border-[#1A1918]"
+                      : "bg-white text-[#75706B] border-[#EAE5DE] hover:border-[#1A1918]"
+                  }`}>
+                  {size}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Color Variants */}

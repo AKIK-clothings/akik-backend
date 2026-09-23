@@ -5,27 +5,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "emb-1",
     "slug": "blue-lavish-satin-embroidered-suit",
     "name": "Blue Lavish on Black Satin Embroidered Suit",
-    "category": "embroidered-satin",
+    "category": "unstitched",
     "subcategory": "Embroidered Satin with Dupatta",
     "regularPrice": 3499,
     "discountedPrice": 2500,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Blue Lavish on Noir",
@@ -59,27 +45,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "emb-2",
     "slug": "rose-noir-satin-embroidered-suit",
     "name": "Rose Noir Satin Suit with Contrast Dupatta",
-    "category": "embroidered-satin",
+    "category": "unstitched",
     "subcategory": "Embroidered Satin with Dupatta",
     "regularPrice": 3499,
     "discountedPrice": 2500,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Rose Noir",
@@ -113,27 +85,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "emb-3",
     "slug": "pastel-ivory-satin-embroidered-suit",
     "name": "Pastel Flora Ivory Satin Embroidered Ensemble",
-    "category": "embroidered-satin",
+    "category": "unstitched",
     "subcategory": "Embroidered Satin with Dupatta",
     "regularPrice": 3499,
     "discountedPrice": 2500,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Ivory Flora",
@@ -167,27 +125,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "emb-4",
     "slug": "scarlet-bloom-satin-embroidered-suit",
     "name": "Scarlet Bloom Noir Satin Ensemble",
-    "category": "embroidered-satin",
+    "category": "unstitched",
     "subcategory": "Embroidered Satin with Dupatta",
     "regularPrice": 3499,
     "discountedPrice": 2500,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Scarlet Noir",
@@ -221,27 +165,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-1",
     "slug": "turquoise-rose-luxury-cotton-satin",
     "name": "Turquoise Ros\u00e9 Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Turquoise Ros\u00e9",
@@ -273,27 +203,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-2",
     "slug": "lavender-nocturne-luxury-cotton-satin",
     "name": "Lavender Nocturne Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Lavender Nocturne",
@@ -325,27 +241,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-3",
     "slug": "amethyst-after-dark-luxury-cotton-satin",
     "name": "Amethyst After Dark Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Amethyst After Dark",
@@ -377,27 +279,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-4",
     "slug": "azure-turquoise-rose-luxury-cotton-satin",
     "name": "Azure Turquoise Ros\u00e9 Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Azure Turquoise Ros\u00e9",
@@ -429,27 +317,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-5",
     "slug": "desert-rose-luxury-cotton-satin",
     "name": "Desert Ros\u00e9 Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Desert Ros\u00e9",
@@ -481,27 +355,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-6",
     "slug": "rose-on-mocha-luxury-cotton-satin",
     "name": "Ros\u00e9 on Mocha Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Ros\u00e9 on Mocha",
@@ -533,27 +393,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-7",
     "slug": "gilded-noir-luxury-cotton-satin",
     "name": "Gilded Noir Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Gilded Noir",
@@ -585,27 +431,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-8",
     "slug": "pastels-on-onion-luxury-cotton-satin",
     "name": "Pastels on Onion Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Pastels on Onion",
@@ -637,27 +469,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-9",
     "slug": "lavender-blue-cream-luxury-cotton-satin",
     "name": "Lavender & Blue on Cream Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Lavender & Blue on Cream",
@@ -689,27 +507,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-10",
     "slug": "sea-green-pink-luxury-cotton-satin",
     "name": "Sea Green & Pink Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Sea Green & Pink",
@@ -741,27 +545,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-11",
     "slug": "pinks-peaches-pearl-luxury-cotton-satin",
     "name": "Pinks and Peaches on Pearl Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Pinks and Peaches on Pearl",
@@ -793,27 +583,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-12",
     "slug": "rose-rouge-luxury-cotton-satin",
     "name": "Ros\u00e9 & Rouge Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Ros\u00e9 & Rouge",
@@ -845,27 +621,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-13",
     "slug": "pastel-ivory-luxury-cotton-satin",
     "name": "Pastel Ivory Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Pastel Ivory",
@@ -897,27 +659,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-14",
     "slug": "rose-noir-crimson-luxury-cotton-satin",
     "name": "Rose Noir Crimson Embroidered Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Rose Noir Crimson Embroidered",
@@ -949,27 +697,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-15",
     "slug": "rose-noir-magenta-luxury-cotton-satin",
     "name": "Rose Noir Magenta Floral Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Rose Noir Magenta Floral",
@@ -1001,27 +735,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-16",
     "slug": "pastel-noir-luxury-cotton-satin",
     "name": "Pastel Noir Embroidered Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Pastel Noir Embroidered",
@@ -1053,27 +773,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-17",
     "slug": "lavender-noir-luxury-cotton-satin",
     "name": "Lavender Noir Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Lavender Noir",
@@ -1105,27 +811,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lux-18",
     "slug": "peach-noir-luxury-cotton-satin",
     "name": "Peach Noir Cotton Satin Suit",
-    "category": "luxury-cotton-satin",
+    "category": "unstitched",
     "subcategory": "Luxury Cotton Satin",
     "regularPrice": 2799,
     "discountedPrice": 2000,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Peach Noir",
@@ -1157,27 +849,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lck-1",
     "slug": "seafoam-whisper-ferozi-satin-lucknowi",
     "name": "Seafoam Whisper on Ferozi Satin Lucknowi Suit",
-    "category": "satin-lucknowi",
-    "subcategory": "Satin Lucknowi",
+    "category": "unstitched",
+    "subcategory": "Satin Lucknowi Collection",
     "regularPrice": 3199,
     "discountedPrice": 2250,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Seafoam Whisper on Ferozi",
@@ -1209,27 +887,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lck-2",
     "slug": "serenity-sky-blue-satin-lucknowi",
     "name": "Serenity Sky Blue Satin Lucknowi Suit",
-    "category": "satin-lucknowi",
-    "subcategory": "Satin Lucknowi",
+    "category": "unstitched",
+    "subcategory": "Satin Lucknowi Collection",
     "regularPrice": 3199,
     "discountedPrice": 2250,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Serenity Sky Blue",
@@ -1261,27 +925,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lck-3",
     "slug": "sage-eclat-forest-satin-lucknowi",
     "name": "Sage \u00c9clat on Forest Satin Lucknowi Suit",
-    "category": "satin-lucknowi",
-    "subcategory": "Satin Lucknowi",
+    "category": "unstitched",
+    "subcategory": "Satin Lucknowi Collection",
     "regularPrice": 3199,
     "discountedPrice": 2250,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Sage \u00c9clat on Forest",
@@ -1313,27 +963,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lck-4",
     "slug": "golden-paisley-sand-satin-lucknowi",
     "name": "Golden Paisley on Sand Satin Lucknowi Suit",
-    "category": "satin-lucknowi",
-    "subcategory": "Satin Lucknowi",
+    "category": "unstitched",
+    "subcategory": "Satin Lucknowi Collection",
     "regularPrice": 3199,
     "discountedPrice": 2250,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Golden Paisley on Sand",
@@ -1365,27 +1001,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lck-5",
     "slug": "moonlight-sapphire-satin-lucknowi",
     "name": "Moonlight on Sapphire Satin Lucknowi Suit",
-    "category": "satin-lucknowi",
-    "subcategory": "Satin Lucknowi",
+    "category": "unstitched",
+    "subcategory": "Satin Lucknowi Collection",
     "regularPrice": 3199,
     "discountedPrice": 2250,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Moonlight on Sapphire",
@@ -1417,27 +1039,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lck-6",
     "slug": "gilded-ivory-sand-satin-lucknowi",
     "name": "Gilded Ivory on Sand Satin Lucknowi Suit",
-    "category": "satin-lucknowi",
-    "subcategory": "Satin Lucknowi",
+    "category": "unstitched",
+    "subcategory": "Satin Lucknowi Collection",
     "regularPrice": 3199,
     "discountedPrice": 2250,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Gilded Ivory on Sand",
@@ -1469,27 +1077,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lck-7",
     "slug": "gold-whisper-sand-satin-lucknowi",
     "name": "Gold Whisper on Sand Satin Lucknowi Suit",
-    "category": "satin-lucknowi",
-    "subcategory": "Satin Lucknowi",
+    "category": "unstitched",
+    "subcategory": "Satin Lucknowi Collection",
     "regularPrice": 3199,
     "discountedPrice": 2250,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Gold Whisper on Sand",
@@ -1521,27 +1115,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lck-8",
     "slug": "celestial-indigo-satin-lucknowi",
     "name": "Celestial Indigo Satin Lucknowi Suit",
-    "category": "satin-lucknowi",
-    "subcategory": "Satin Lucknowi",
+    "category": "unstitched",
+    "subcategory": "Satin Lucknowi Collection",
     "regularPrice": 3199,
     "discountedPrice": 2250,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Celestial Indigo",
@@ -1573,27 +1153,13 @@ export const MOCK_PRODUCTS: Product[] = [
     "id": "lck-9",
     "slug": "violet-eclat-satin-lucknowi",
     "name": "Violet \u00c9clat Satin Lucknowi Suit",
-    "category": "satin-lucknowi",
-    "subcategory": "Satin Lucknowi",
+    "category": "unstitched",
+    "subcategory": "Satin Lucknowi Collection",
     "regularPrice": 3199,
     "discountedPrice": 2250,
     "isSoldOut": false,
-    "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL"
-    ],
-    "sizeStockMap": {
-      "S": true,
-      "M": true,
-      "L": true,
-      "XL": true,
-      "XXL": true,
-      "XXXL": true
-    },
+    "sizes": [],
+    "sizeStockMap": {},
     "colorVariants": [
       {
         "name": "Violet \u00c9clat",

@@ -8,12 +8,19 @@ import Link from "next/link";
 import { adminApi, ApiProduct } from "@/lib/api";
 
 const CATEGORIES = [
-  { value: "embroidered-satin", label: "Embroidered Satin with Dupatta" },
-  { value: "luxury-cotton-satin", label: "Luxury Cotton Satin" },
-  { value: "satin-lucknowi", label: "Satin Lucknowi" },
+  { value: "stitched", label: "Stitched" },
+  { value: "unstitched", label: "Unstitched" },
+  { value: "kids", label: "Kids" },
 ];
 
-const SIZES = ["S", "M", "L", "XL", "XXL", "XXXL", "Free Size", "Unstitched"];
+const SUBCATEGORIES = [
+  "Embroidered Satin with Dupatta",
+  "Luxury Cotton Satin",
+  "Satin Lucknowi Collection",
+  "Rose Royale Collection",
+];
+
+const SIZES = ["S", "M", "L", "XL", "XXL", "XXXL", "Free Size"];
 
 export default function AdminEditProductPage() {
   const params = useParams();
@@ -146,10 +153,14 @@ export default function AdminEditProductPage() {
     setIsSubmitting(true);
 
     try {
+      const isUnstitched = form.category === "unstitched";
+      const finalSizes = isUnstitched ? [] : selectedSizes;
       const sizeStockMap: Record<string, boolean> = {};
-      selectedSizes.forEach((s) => {
-        sizeStockMap[s] = true;
-      });
+      if (!isUnstitched) {
+        finalSizes.forEach((s) => {
+          sizeStockMap[s] = true;
+        });
+      }
 
       let updatedImages = [...existingImages];
 
@@ -168,7 +179,7 @@ export default function AdminEditProductPage() {
         subcategory: form.subcategory,
         regularPrice: Number(form.regularPrice) || Number(form.discountedPrice),
         discountedPrice: Number(form.discountedPrice),
-        sizes: selectedSizes,
+        sizes: finalSizes,
         sizeStockMap,
         colorVariants: colorVariants.filter((c) => c.name).map((c, i) => ({
           name: c.name,
@@ -266,15 +277,20 @@ export default function AdminEditProductPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">
-                Subcategory
+                Subcategory *
               </label>
-              <input
+              <select
                 name="subcategory"
                 value={form.subcategory}
                 onChange={handleChange}
-                placeholder="e.g. Embroidered Satin with Dupatta"
                 className="w-full px-4 py-2.5 bg-[#FAF9F6] border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A]"
-              />
+              >
+                {SUBCATEGORIES.map((sub) => (
+                  <option key={sub} value={sub}>
+                    {sub}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -348,22 +364,28 @@ export default function AdminEditProductPage() {
         {/* Sizes */}
         <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-3">
           <h2 className="font-semibold text-[#1A1918]">Available Sizes</h2>
-          <div className="flex flex-wrap gap-2">
-            {SIZES.map((size) => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => toggleSize(size)}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all ${
-                  selectedSizes.includes(size)
-                    ? "bg-[#C47D5A] border-[#C47D5A] text-white shadow-sm"
-                    : "bg-[#FAF9F6] border-[#EAE5DE] text-[#75706B] hover:border-[#C47D5A]"
-                }`}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
+          {form.category === "unstitched" ? (
+            <p className="text-xs text-[#75706B] bg-[#FAF9F6] p-3 rounded-lg border border-[#EAE5DE]">
+              Unstitched category does not require sizes. Products in this category are standard full fabric cuts.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => toggleSize(size)}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all ${
+                    selectedSizes.includes(size)
+                      ? "bg-[#C47D5A] border-[#C47D5A] text-white shadow-sm"
+                      : "bg-[#FAF9F6] border-[#EAE5DE] text-[#75706B] hover:border-[#C47D5A]"
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Color Variants */}

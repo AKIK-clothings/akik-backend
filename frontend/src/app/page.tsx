@@ -85,7 +85,7 @@ export default function HomePage() {
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <Link
-              href="/collections?collection=embroidered-satin"
+              href="/collections?collection=unstitched"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 bg-[#FAF9F6] text-[#1F1E1D] hover:bg-[#C47D5A] hover:text-white text-xs font-semibold uppercase tracking-widest rounded shadow-xl transition-all duration-300 active:scale-95"
             >
               <span>Explore Collection</span>

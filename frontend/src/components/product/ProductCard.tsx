@@ -46,7 +46,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     e.stopPropagation();
 
     // Check if out of stock
-    const isOutOfStock = product.sizeStockMap?.[size] === false || product.isSoldOut;
+    const isOutOfStock =
+      product.isSoldOut ||
+      (product.sizes.length > 0 && product.sizeStockMap?.[size] === false);
     if (isOutOfStock) return;
 
     // Trigger cart addition
@@ -146,34 +148,59 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* 3. Quick-Add / Size Selector (Slides up on desktop hover) */}
         {!product.isSoldOut && (
           <div className="absolute bottom-0 inset-x-0 z-20 hidden md:block translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out bg-gradient-to-t from-black/80 via-black/50 to-transparent p-3 pt-6">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-white/90 mb-1.5 text-center">
-              Quick Add Size
-            </div>
-            <div className="flex items-center justify-center flex-wrap gap-1.5">
-              {product.sizes.map((sz) => {
-                const isOutOfStock = product.sizeStockMap?.[sz] === false;
-                const isJustAdded = addedSizeFeedback === sz;
+            {product.sizes && product.sizes.length > 0 ? (
+              <>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-white/90 mb-1.5 text-center">
+                  Quick Add Size
+                </div>
+                <div className="flex items-center justify-center flex-wrap gap-1.5">
+                  {product.sizes.map((sz) => {
+                    const isOutOfStock = product.sizeStockMap?.[sz] === false;
+                    const isJustAdded = addedSizeFeedback === sz;
 
-                return (
-                  <button
-                    key={sz}
-                    type="button"
-                    disabled={isOutOfStock}
-                    onClick={(e) => handleSizeClick(e, sz)}
-                    aria-label={`Select size ${sz}`}
-                    className={`relative min-w-[28px] h-7 px-2 text-xs font-semibold rounded flex items-center justify-center transition-all ${
-                      isJustAdded
-                        ? "bg-emerald-600 text-white scale-105"
-                        : isOutOfStock
-                        ? "bg-white/20 text-white/40 cursor-not-allowed line-through"
-                        : "bg-white text-[#1F1E1D] hover:bg-[#C47D5A] hover:text-white active:scale-95 shadow"
-                    }`}
-                  >
-                    {isJustAdded ? <Check className="w-3.5 h-3.5" /> : sz}
-                  </button>
-                );
-              })}
-            </div>
+                    return (
+                      <button
+                        key={sz}
+                        type="button"
+                        disabled={isOutOfStock}
+                        onClick={(e) => handleSizeClick(e, sz)}
+                        aria-label={`Select size ${sz}`}
+                        className={`relative min-w-[28px] h-7 px-2 text-xs font-semibold rounded flex items-center justify-center transition-all ${
+                          isJustAdded
+                            ? "bg-emerald-600 text-white scale-105"
+                            : isOutOfStock
+                            ? "bg-white/20 text-white/40 cursor-not-allowed line-through"
+                            : "bg-white text-[#1F1E1D] hover:bg-[#C47D5A] hover:text-white active:scale-95 shadow"
+                        }`}
+                      >
+                        {isJustAdded ? <Check className="w-3.5 h-3.5" /> : sz}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={(e) => handleSizeClick(e, "Unstitched")}
+                  className={`w-full py-2 px-3 text-xs font-semibold rounded uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+                    addedSizeFeedback === "Unstitched"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-[#FAF9F6] text-[#1F1E1D] hover:bg-[#C47D5A] hover:text-white shadow"
+                  }`}
+                >
+                  {addedSizeFeedback === "Unstitched" ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Added!</span>
+                    </>
+                  ) : (
+                    <span>Quick Add (Unstitched)</span>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

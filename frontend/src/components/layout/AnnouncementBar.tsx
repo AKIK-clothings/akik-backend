@@ -1,118 +1,128 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Copy, Check, Sparkles } from "lucide-react";
-import { ANNOUNCEMENT_ITEMS } from "@/data/navigationData";
-import Link from "next/link";
+import React from "react";
+import { usePathname } from "next/navigation";
+import { Globe2, AlertCircle, PackageCheck, Sparkles } from "lucide-react";
+
+const MARQUEE_ITEMS = [
+  {
+    id: "shipping-info",
+    type: "shipping",
+    badge: "GLOBAL & DOMESTIC",
+    text: "INTERNATIONAL SHIPPING AVAILABLE AND WE SHIP ALL OVER INDIA",
+    icon: Globe2,
+  },
+  {
+    id: "disclaimer-color",
+    type: "disclaimer",
+    badge: "DISCLAIMER",
+    text: "Colour variations may occur due to differences in lighting, photography, and screen settings.",
+    icon: AlertCircle,
+  },
+  {
+    id: "disclaimer-shipping-cost",
+    type: "notice",
+    badge: "POLICY",
+    text: "Shipping charges are applicable separately.",
+    icon: PackageCheck,
+  },
+];
 
 export const AnnouncementBar: React.FC = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const pathname = usePathname();
 
-  const nextAnnouncement = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % ANNOUNCEMENT_ITEMS.length);
-  }, []);
+  // Do not show on admin portal
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
-  const prevAnnouncement = useCallback(() => {
-    setCurrentIndex(
-      (prev) => (prev - 1 + ANNOUNCEMENT_ITEMS.length) % ANNOUNCEMENT_ITEMS.length
-    );
-  }, []);
-
-  useEffect(() => {
-    if (isPaused) return;
-    const interval = setInterval(nextAnnouncement, 4200);
-    return () => clearInterval(interval);
-  }, [isPaused, nextAnnouncement]);
-
-  const handleCopy = (e: React.MouseEvent, code: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2500);
-  };
-
-  const current = ANNOUNCEMENT_ITEMS[currentIndex];
+  // Render 4 repetitions per half so wide screens never have gaps
+  const repeatedItems = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
 
   return (
     <div
       role="region"
-      aria-label="Promotional Announcements"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      className="relative z-50 bg-[#1F1E1D]/90 backdrop-blur-sm text-[#FAF9F6] border-b border-white/10 px-3 py-1 text-[10.5px] font-sans select-none"
+      aria-label="Shipping Announcements and Disclaimers"
+      className="relative z-50 bg-[#141312] text-[#FAF9F6] border-b border-[#2D2A26] overflow-hidden select-none py-1.5 text-[11px] font-sans"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Previous Button */}
-        <button
-          onClick={prevAnnouncement}
-          aria-label="Previous announcement"
-          className="p-0.5 rounded text-[#FAF9F6]/60 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-[#C47D5A]"
-        >
-          <ChevronLeft className="w-3 h-3" />
-        </button>
-
-        {/* Dynamic Rotating Message */}
-        <div className="flex-1 overflow-hidden mx-2 text-center flex items-center justify-center min-h-[18px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={current.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28, ease: "easeInOut" }}
-              className="inline-flex items-center gap-2 flex-wrap justify-center"
-            >
-              {current.badge && (
-                <span className="inline-flex items-center gap-1 bg-[#C47D5A] text-white text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full">
-                  <Sparkles className="w-2.5 h-2.5" />
-                  {current.badge}
-                </span>
-              )}
-
-              {current.link ? (
-                <Link
-                  href={current.link}
-                  className="hover:underline underline-offset-4 tracking-wide text-[#FAF9F6] font-medium"
+      <div className="flex w-max animate-marquee-left hover:[animation-play-state:paused] cursor-default">
+        {/* Track Half 1 */}
+        <div className="flex items-center shrink-0">
+          {repeatedItems.map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={`track1-${item.id}-${idx}`}
+                className="inline-flex items-center gap-2.5 px-6 whitespace-nowrap"
+              >
+                <span
+                  className={`inline-flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full ${
+                    item.type === "shipping"
+                      ? "bg-[#C47D5A] text-white"
+                      : item.type === "disclaimer"
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                      : "bg-white/10 text-white/90 border border-white/15"
+                  }`}
                 >
-                  {current.text}
-                </Link>
-              ) : (
-                <span className="tracking-wide text-[#FAF9F6] font-medium">
-                  {current.text}
+                  <Icon className="w-2.5 h-2.5" />
+                  {item.badge}
                 </span>
-              )}
 
-              {current.code && (
-                <button
-                  onClick={(e) => handleCopy(e, current.code!)}
-                  title="Click to copy coupon code"
-                  className="inline-flex items-center gap-1 bg-white/15 hover:bg-white/25 border border-white/20 text-[#FAF9F6] px-2 py-0.5 rounded text-[11px] font-mono transition-colors"
+                <span
+                  className={`tracking-wide ${
+                    item.type === "shipping"
+                      ? "font-bold text-white tracking-widest uppercase"
+                      : "text-[#E6E2DC] font-normal"
+                  }`}
                 >
-                  <span>{current.code}</span>
-                  {copiedCode === current.code ? (
-                    <Check className="w-3 h-3 text-emerald-400" />
-                  ) : (
-                    <Copy className="w-3 h-3 text-[#C47D5A]" />
-                  )}
-                </button>
-              )}
-            </motion.div>
-          </AnimatePresence>
+                  {item.text}
+                </span>
+
+                <Sparkles className="w-2.5 h-2.5 text-[#C47D5A]/70 ml-2" />
+              </div>
+            );
+          })}
         </div>
 
-        {/* Next Button */}
-        <button
-          onClick={nextAnnouncement}
-          aria-label="Next announcement"
-          className="p-0.5 rounded text-[#FAF9F6]/60 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-[#C47D5A]"
-        >
-          <ChevronRight className="w-3 h-3" />
-        </button>
+        {/* Track Half 2 (Exact Duplicate for Seamless 100%->50% Loop) */}
+        <div className="flex items-center shrink-0" aria-hidden="true">
+          {repeatedItems.map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={`track2-${item.id}-${idx}`}
+                className="inline-flex items-center gap-2.5 px-6 whitespace-nowrap"
+              >
+                <span
+                  className={`inline-flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full ${
+                    item.type === "shipping"
+                      ? "bg-[#C47D5A] text-white"
+                      : item.type === "disclaimer"
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                      : "bg-white/10 text-white/90 border border-white/15"
+                  }`}
+                >
+                  <Icon className="w-2.5 h-2.5" />
+                  {item.badge}
+                </span>
+
+                <span
+                  className={`tracking-wide ${
+                    item.type === "shipping"
+                      ? "font-bold text-white tracking-widest uppercase"
+                      : "text-[#E6E2DC] font-normal"
+                  }`}
+                >
+                  {item.text}
+                </span>
+
+                <Sparkles className="w-2.5 h-2.5 text-[#C47D5A]/70 ml-2" />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 };
+export default AnnouncementBar;

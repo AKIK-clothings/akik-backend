@@ -57,6 +57,9 @@ export default function AdminProductsPage() {
   };
 
   const CATEGORY_LABELS: Record<string, string> = {
+    "stitched": "Stitched",
+    "unstitched": "Unstitched",
+    "kids": "Kids",
     "embroidered-satin": "Embroidered Satin",
     "luxury-cotton-satin": "Luxury Cotton Satin",
     "satin-lucknowi": "Satin Lucknowi",

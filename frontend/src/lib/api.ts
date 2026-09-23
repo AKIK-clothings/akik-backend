@@ -208,7 +208,7 @@ export const api = {
     couponDiscount?: number;
     shippingFee?: number;
     promoCode?: string;
-  }): Promise<{ success: boolean; orderNumber: string; adminWhatsAppUrl?: string }> {
+  }): Promise<{ success: boolean; orderNumber: string; customerWhatsAppUrl?: string }> {
     const res = await fetch(`${BASE_URL}/api/checkout/verify-payment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

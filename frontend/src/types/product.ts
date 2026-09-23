@@ -24,35 +24,13 @@ export interface ProductVariant {
 export type MainCategory =
   | "stitched"
   | "unstitched"
-  | "twinning"
-  | "embroidered-satin"
-  | "luxury-cotton-satin"
-  | "satin-lucknowi";
-
-export type StitchedSubCategory =
-  | "Kurti Sets"
-  | "Kurti Sets with Dupatta"
-  | "Co-ord Sets"
-  | "Neck Tops"
-  | "Embroidered Satin with Dupatta"
-  | "Luxury Cotton Satin"
-  | "Satin Lucknowi";
-
-export type UnstitchedSubCategory =
-  | "Saree Collection"
-  | "Rayon Collection"
-  | "Cotton Collection"
-  | "Unstitched Suit Sets";
-
-export type TwinningSubCategory =
-  | "Mother & Daughter"
-  | "Festive Duo Sets"
-  | "Couple Coordinates";
+  | "kids";
 
 export type SubCategory =
-  | StitchedSubCategory
-  | UnstitchedSubCategory
-  | TwinningSubCategory
+  | "Embroidered Satin with Dupatta"
+  | "Luxury Cotton Satin"
+  | "Satin Lucknowi Collection"
+  | "Rose Royale Collection"
   | string;
 
 export interface ProductAccordionItem {

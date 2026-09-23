@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle, ShoppingBag, MessageCircle } from "lucide-react";
+import { WhatsAppIcon } from "@/components/ui/Icons";
 import { InstagramIcon } from "@/components/ui/Icons";
 import { CONTACT_INFO } from "@/data/contactInfo";
 
@@ -12,6 +13,7 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const orderNumber = searchParams.get("order");
+  const waUrl = searchParams.get("wa");
 
   useEffect(() => {
     if (!orderNumber) {
@@ -54,13 +56,26 @@ function SuccessContent() {
           </div>
         </div>
 
+        {/* WhatsApp Receipt CTA — shown when wa param present (popup may have been blocked) */}
+        {waUrl && (
+          <a
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2.5 w-full py-4 px-6 bg-[#25D366] hover:bg-[#1DAD58] text-white font-bold text-sm rounded-xl shadow-lg transition-colors"
+          >
+            <WhatsAppIcon className="w-5 h-5" />
+            Send My Order Confirmation on WhatsApp
+          </a>
+        )}
+
         {/* What happens next */}
         <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 text-left shadow-sm space-y-4">
           <h2 className="font-semibold text-[#1F1E1D] text-sm">What happens next?</h2>
           <div className="space-y-3 text-sm text-[#75706B]">
             <div className="flex items-start gap-3">
               <span className="w-5 h-5 bg-[#C47D5A]/15 text-[#C47D5A] rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
-              <p>Hafsa will review your order and <strong className="text-[#1F1E1D]">confirm it on WhatsApp</strong> within a few hours.</p>
+              <p>You&apos;ll receive an <strong className="text-[#1F1E1D]">order receipt on WhatsApp</strong> with full details on your mobile number.</p>
             </div>
             <div className="flex items-start gap-3">
               <span className="w-5 h-5 bg-[#C47D5A]/15 text-[#C47D5A] rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
@@ -68,7 +83,7 @@ function SuccessContent() {
             </div>
             <div className="flex items-start gap-3">
               <span className="w-5 h-5 bg-[#C47D5A]/15 text-[#C47D5A] rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
-              <p>If you have any questions, reach us on WhatsApp at <a href={CONTACT_INFO.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-[#25D366] font-semibold hover:underline">{CONTACT_INFO.phone}</a>.</p>
+              <p>Questions? WhatsApp Hafsa at <a href={CONTACT_INFO.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-[#25D366] font-semibold hover:underline">{CONTACT_INFO.phone}</a>.</p>
             </div>
           </div>
         </div>
@@ -80,8 +95,8 @@ function SuccessContent() {
             <ShoppingBag className="w-4 h-4" /> Continue Shopping
           </Link>
           <a href={CONTACT_INFO.whatsappLink} target="_blank" rel="noopener noreferrer"
-            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#25D366] text-white text-sm font-semibold rounded-xl hover:bg-[#1DAD58] transition-colors">
-            <MessageCircle className="w-4 h-4" /> WhatsApp Us
+            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-[#EAE5DE] text-[#1F1E1D] text-sm font-semibold rounded-xl hover:border-[#25D366] hover:text-[#25D366] transition-colors">
+            <MessageCircle className="w-4 h-4" /> Contact Us
           </a>
         </div>
 
@@ -102,3 +117,4 @@ export default function CheckoutSuccessPage() {
     </Suspense>
   );
 }
+

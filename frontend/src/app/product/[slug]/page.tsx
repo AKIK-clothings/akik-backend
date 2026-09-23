@@ -122,18 +122,24 @@ export default function ProductDetailPage() {
     ? Math.round((savingsAmount / product.regularPrice) * 100)
     : 0;
 
+  const isUnstitched =
+    product?.category === "unstitched" || !product?.sizes || product.sizes.length === 0;
+
   // Check if current selected size is out of stock
   const isSizeOutOfStock =
-    product?.isSoldOut || (selectedSize && product?.sizeStockMap?.[selectedSize] === false);
+    product?.isSoldOut ||
+    (!isUnstitched && selectedSize && product?.sizeStockMap?.[selectedSize] === false);
+
+  const effectiveSize = isUnstitched ? "Unstitched" : selectedSize;
 
   const handleAddToCart = () => {
     if (!product || product.isSoldOut || isSizeOutOfStock) return;
-    addToCart(product, selectedSize, selectedColor, 1);
+    addToCart(product, effectiveSize as ApparelSize, selectedColor, 1);
   };
 
   const handleBuyNow = () => {
     if (!product || product.isSoldOut || isSizeOutOfStock) return;
-    addToCart(product, selectedSize, selectedColor, 1);
+    addToCart(product, effectiveSize as ApparelSize, selectedColor, 1);
   };
 
   const handleNotifySubmit = (e: React.FormEvent) => {
@@ -322,95 +328,111 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Size Selector */}
-            <div>
-              <div className="flex items-center justify-between mb-2.5 text-xs">
-                <span className="font-semibold text-[#1F1E1D]">
-                  Select Size: <strong className="text-[#C47D5A]">{selectedSize}</strong>
-                </span>
+            {/* Size Selector or Unstitched Notice */}
+            {!isUnstitched ? (
+              <div>
+                <div className="flex items-center justify-between mb-2.5 text-xs">
+                  <span className="font-semibold text-[#1F1E1D]">
+                    Select Size: <strong className="text-[#C47D5A]">{selectedSize}</strong>
+                  </span>
 
-                {/* Size Guide Trigger */}
-                <button
-                  type="button"
-                  onClick={() => setIsSizeGuideOpen(true)}
-                  className="inline-flex items-center gap-1 font-semibold text-[#C47D5A] hover:underline"
-                >
-                  <Ruler className="w-3.5 h-3.5" />
-                  <span>Size Guide</span>
-                </button>
-              </div>
-
-              {/* Size Chips */}
-              <div className="grid grid-cols-6 gap-2">
-                {product.sizes.map((sz) => {
-                  const isOutOfStock =
-                    product.isSoldOut || product.sizeStockMap?.[sz] === false;
-                  const isSelected = selectedSize === sz;
-
-                  return (
-                    <button
-                      key={sz}
-                      type="button"
-                      onClick={() => {
-                        setSelectedSize(sz);
-                        if (isOutOfStock) setNotifySize(sz);
-                        else setNotifySize(null);
-                      }}
-                      className={`relative py-3 rounded text-xs font-semibold uppercase tracking-wider transition-all ${
-                        isSelected
-                          ? "bg-[#1F1E1D] text-white shadow-md border border-[#1F1E1D]"
-                          : isOutOfStock
-                          ? "bg-white/50 text-[#75706B]/50 border border-dashed border-[#EAE5DE] line-through cursor-pointer"
-                          : "bg-white text-[#1F1E1D] border border-[#EAE5DE] hover:border-[#C47D5A]"
-                      }`}
-                    >
-                      {sz}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Struck-through Sold Out / "Notify Me" Trigger */}
-              {isSizeOutOfStock && (
-                <div className="mt-3 p-3 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <Bell className="w-3.5 h-3.5 text-amber-700" />
-                      Size {selectedSize} is currently out of stock
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setNotifySize(selectedSize)}
-                      className="font-bold text-amber-900 hover:underline"
-                    >
-                      Notify Me
-                    </button>
-                  </div>
-
-                  {notifySize === selectedSize && (
-                    <form
-                      onSubmit={handleNotifySubmit}
-                      className="mt-2.5 flex gap-2"
-                    >
-                      <input
-                        type="email"
-                        required
-                        value={notifyEmail}
-                        onChange={(e) => setNotifyEmail(e.target.value)}
-                        placeholder="Enter your email"
-                        className="flex-1 px-3 py-1.5 text-xs bg-white border border-amber-300 rounded focus:outline-none"
-                      />
-                      <button
-                        type="submit"
-                        className="px-3 py-1.5 bg-[#1F1E1D] text-white text-xs font-semibold rounded"
-                      >
-                        {notifySuccess ? "Registered!" : "Alert Me"}
-                      </button>
-                    </form>
-                  )}
+                  {/* Size Guide Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => setIsSizeGuideOpen(true)}
+                    className="inline-flex items-center gap-1 font-semibold text-[#C47D5A] hover:underline"
+                  >
+                    <Ruler className="w-3.5 h-3.5" />
+                    <span>Size Guide</span>
+                  </button>
                 </div>
-              )}
-            </div>
+
+                {/* Size Chips */}
+                <div className="grid grid-cols-6 gap-2">
+                  {product.sizes.map((sz) => {
+                    const isOutOfStock =
+                      product.isSoldOut || product.sizeStockMap?.[sz] === false;
+                    const isSelected = selectedSize === sz;
+
+                    return (
+                      <button
+                        key={sz}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSize(sz);
+                          if (isOutOfStock) setNotifySize(sz);
+                          else setNotifySize(null);
+                        }}
+                        className={`relative py-3 rounded text-xs font-semibold uppercase tracking-wider transition-all ${
+                          isSelected
+                            ? "bg-[#1F1E1D] text-white shadow-md border border-[#1F1E1D]"
+                            : isOutOfStock
+                            ? "bg-white/50 text-[#75706B]/50 border border-dashed border-[#EAE5DE] line-through cursor-pointer"
+                            : "bg-white text-[#1F1E1D] border border-[#EAE5DE] hover:border-[#C47D5A]"
+                        }`}
+                      >
+                        {sz}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Struck-through Sold Out / "Notify Me" Trigger */}
+                {isSizeOutOfStock && (
+                  <div className="mt-3 p-3 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Bell className="w-3.5 h-3.5 text-amber-700" />
+                        Size {selectedSize} is currently out of stock
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setNotifySize(selectedSize)}
+                        className="font-bold text-amber-900 hover:underline"
+                      >
+                        Notify Me
+                      </button>
+                    </div>
+
+                    {notifySize === selectedSize && (
+                      <form
+                        onSubmit={handleNotifySubmit}
+                        className="mt-2.5 flex gap-2"
+                      >
+                        <input
+                          type="email"
+                          required
+                          value={notifyEmail}
+                          onChange={(e) => setNotifyEmail(e.target.value)}
+                          placeholder="Enter your email"
+                          className="flex-1 px-3 py-1.5 text-xs bg-white border border-amber-300 rounded focus:outline-none"
+                        />
+                        <button
+                          type="submit"
+                          className="px-3 py-1.5 bg-[#1F1E1D] text-white text-xs font-semibold rounded"
+                        >
+                          {notifySuccess ? "Registered!" : "Alert Me"}
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-lg bg-[#FAF9F6] border border-[#EAE5DE] text-xs text-[#75706B] flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-[#1F1E1D] block">
+                    Unstitched Fabric Piece
+                  </span>
+                  <span className="text-[11px] text-[#75706B]">
+                    Complete 3-piece fabric cut • No sizing required • Ready for custom tailoring
+                  </span>
+                </div>
+                <span className="px-2.5 py-1 bg-white border border-[#EAE5DE] text-[10px] font-bold uppercase tracking-wider text-[#C47D5A] rounded shadow-sm">
+                  Free Size Cut
+                </span>
+              </div>
+            )}
 
             {/* CTA Buttons (Add to Bag & Buy It Now) */}
             <div className="space-y-3 pt-2">
@@ -629,12 +651,19 @@ export default function ProductDetailPage() {
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      className="text-xs text-[#75706B] mt-2.5 leading-relaxed space-y-1.5"
+                      className="text-xs text-[#75706B] mt-2.5 leading-relaxed space-y-2"
                     >
                       <p>
                         {product.accordions?.shippingReturns ||
                           "Dispatched within 24-48 business hours. Doorstep return pickup available across 19,000+ Indian pincodes within 7 days of delivery."}
                       </p>
+                      <div className="pt-2 border-t border-[#EAE5DE] space-y-1 text-[11.5px] text-[#75706B]">
+                        <p className="font-semibold text-[#1F1E1D] uppercase tracking-wider text-[10px]">Disclaimer:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          <li>Colour variations may occur due to differences in lighting, photography, and screen settings.</li>
+                          <li>Shipping charges are applicable separately.</li>
+                        </ul>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

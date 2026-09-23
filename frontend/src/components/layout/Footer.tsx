@@ -81,6 +81,26 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
+        {/* Disclaimer Section */}
+        <div className="pt-4 border-t border-[#2D2B28]/80">
+          <div className="rounded-lg bg-white/[0.025] border border-white/10 p-3.5 sm:p-4 text-xs">
+            <h4 className="font-semibold text-white/90 uppercase tracking-widest text-[10.5px] flex items-center gap-1.5 mb-2">
+              <Sparkles className="w-3 h-3 text-[#C47D5A]" />
+              Disclaimer
+            </h4>
+            <ul className="space-y-1.5 text-[#A8A49F] text-[11.5px] leading-relaxed">
+              <li className="flex items-start gap-2">
+                <span className="text-[#C47D5A] mt-0.5 font-bold">•</span>
+                <span>Colour variations may occur due to differences in lighting, photography, and screen settings.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#C47D5A] mt-0.5 font-bold">•</span>
+                <span>Shipping charges are applicable separately.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
         {/* Divider and Bottom Row: Copyright + Builder Info */}
         <div className="pt-4 border-t border-[#2D2B28] flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-[#8A857F]">
           {/* Exact Copyright line */}
