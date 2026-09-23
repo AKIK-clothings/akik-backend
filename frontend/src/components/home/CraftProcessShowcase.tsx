@@ -48,28 +48,7 @@ const PROCESS_STEPS: ProcessStep[] = [
     stepNumber: "02",
     tag: "Artisanal Detailing",
   },
-  {
-    id: "step-3",
-    title: "Atelier Tailoring & Seam Margins",
-    subtitle: "Bespoke Boutique Finishing",
-    description:
-      "Every kurti and coordinate is cut with generous 2-inch internal seam margins, lined with breathable cotton malmal, and hand-finished with hidden French seams.",
-    videoSrc: "/videos/cloth_making_reel_3.mp4",
-    duration: "0:42",
-    stepNumber: "03",
-    tag: "Tailoring Excellence",
-  },
-  {
-    id: "step-4",
-    title: "Draping Harmony & Quality Inspection",
-    subtitle: "Editorial Styling & Quality Assurance",
-    description:
-      "Each finished garment undergoes meticulous inspection under studio illumination, ensuring flawless drape, color consistency, and pure handloom integrity.",
-    videoSrc: "/videos/atelier_craft_process.mp4",
-    duration: "0:30",
-    stepNumber: "04",
-    tag: "Final Inspection",
-  },
+
 ];
 
 export const CraftProcessShowcase: React.FC = () => {
@@ -155,7 +134,7 @@ export const CraftProcessShowcase: React.FC = () => {
                   {activeStep.tag}
                 </span>
                 <span className="bg-white/10 backdrop-blur-md text-white/80 text-[10px] px-2.5 py-1 rounded-full font-mono">
-                  Chapter {activeStep.stepNumber} of 04
+                  Chapter {activeStep.stepNumber} of 02
                 </span>
               </div>
 
