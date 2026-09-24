@@ -12,7 +12,7 @@ import {
   Search,
   Heart,
 } from "lucide-react";
-import { MOCK_PRODUCTS } from "@/data/mockProducts";
+
 import { ProductCard } from "@/components/product/ProductCard";
 import { FilterContent } from "@/components/plp/FilterContent";
 import { ApparelSize, Product, SortOption } from "@/types/product";
@@ -135,7 +135,7 @@ function CollectionsContent() {
     Boolean(searchParam);
 
   // Products state (live from API, fallback to mock)
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     let isMounted = true;

@@ -17,7 +17,7 @@ import {
   Sparkles,
   Heart,
 } from "lucide-react";
-import { MOCK_PRODUCTS } from "@/data/mockProducts";
+
 import { ImageGallery } from "@/components/product/ImageGallery";
 import { SizeGuideModal } from "@/components/product/SizeGuideModal";
 import { useCart } from "@/context/CartContext";
@@ -35,7 +35,7 @@ export default function ProductDetailPage() {
 
   // Find fallback from mock
   const fallbackProduct = useMemo(() => {
-    return MOCK_PRODUCTS.find((p) => p.slug === slug) ?? null;
+    return null;
   }, [slug]);
 
   const [product, setProduct] = useState<Product | null>(fallbackProduct);

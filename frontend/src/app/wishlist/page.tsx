@@ -15,14 +15,14 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { ProductCard } from "@/components/product/ProductCard";
-import { MOCK_PRODUCTS } from "@/data/mockProducts";
+
 import { Product } from "@/types/product";
 import { api, mapApiProduct } from "@/lib/api";
 import { CONTACT_INFO } from "@/data/contactInfo";
 
 export default function WishlistPage() {
   const { wishlist, wishlistCount, isInWishlist, clearWishlist, isHydrated } = useCart();
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load live products from API, fall back to MOCK_PRODUCTS
@@ -50,9 +50,7 @@ export default function WishlistPage() {
   // Merge mock and API products to ensure 100% resolution for any saved slug or id
   const allAvailableProducts = useMemo(() => {
     const productMap = new Map<string, Product>();
-    MOCK_PRODUCTS.forEach((p) => {
-      productMap.set(p.slug, p);
-    });
+
     products.forEach((p) => {
       productMap.set(p.slug, p);
     });

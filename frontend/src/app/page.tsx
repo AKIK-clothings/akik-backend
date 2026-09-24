@@ -11,7 +11,7 @@ import {
   RotateCcw,
   Scissors,
 } from "lucide-react";
-import { MOCK_PRODUCTS } from "@/data/mockProducts";
+
 import { ProductCard } from "@/components/product/ProductCard";
 import { NAVIGATION_CATEGORIES } from "@/data/navigationData";
 import { CraftProcessShowcase } from "@/components/home/CraftProcessShowcase";
@@ -19,12 +19,8 @@ import { api, mapApiProduct } from "@/lib/api";
 import { Product } from "@/types/product";
 
 export default function HomePage() {
-  const [bestsellers, setBestsellers] = useState<Product[]>(() =>
-    MOCK_PRODUCTS.filter((p) => p.isBestSeller).slice(0, 4)
-  );
-  const [newArrivals, setNewArrivals] = useState<Product[]>(() =>
-    MOCK_PRODUCTS.filter((p) => p.isNewArrival).slice(0, 4)
-  );
+  const [bestsellers, setBestsellers] = useState<Product[]>([]);
+  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
 
   useEffect(() => {
     let isMounted = true;
