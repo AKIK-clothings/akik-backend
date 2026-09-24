@@ -34,6 +34,7 @@ app.use(cookieParser());
 const ALLOWED_ORIGINS = [
   "https://akikbyhafsakhatri.in",
   "https://www.akikbyhafsakhatri.in",
+  "https://www.akikcreationsbyhy.com"
 ];
 
 if (process.env.FRONTEND_URL) {
