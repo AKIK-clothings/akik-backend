@@ -17,6 +17,7 @@ scratch_ocr.ps1
 # Environment Variables & Secrets
 .env
 .env*.local
+.env.example
 *.pem
 *.key
 

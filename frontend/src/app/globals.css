@@ -70,6 +70,8 @@ body {
   will-change: transform;
 }
 
+
 .animate-marquee-left:hover {
   animation-play-state: paused;
 }
+

@@ -32,7 +32,7 @@ const PROCESS_STEPS: ProcessStep[] = [
     subtitle: "Artisanal Fabric Crafting",
     description:
       "Witness our master artisans crafting luxury boutique fabrics from raw spun yarns through time-honored traditional techniques.",
-    videoSrc: "/videos/cloth_making_process.mp4",
+    videoSrc: "https://res.cloudinary.com/suxqbbxr/video/upload/v1789927781/cloth_making_process.mp4",
     duration: "0:25",
     stepNumber: "01",
     tag: "Cloth Making",
@@ -43,7 +43,7 @@ const PROCESS_STEPS: ProcessStep[] = [
     subtitle: "Tested Metallic Thread Embroidery",
     description:
       "Traditional Kadhwa and Dabka embroidery techniques executed stitch by stitch using fine metallic zari ribbons and antique bullion wires.",
-    videoSrc: "/videos/cloth_making_reel_2.mp4",
+    videoSrc: "https://res.cloudinary.com/suxqbbxr/video/upload/v1789927783/cloth_making_reel_2.mp4",
     duration: "0:34",
     stepNumber: "02",
     tag: "Artisanal Detailing",

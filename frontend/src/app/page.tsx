@@ -47,17 +47,36 @@ export default function HomePage() {
     <main className="min-h-screen bg-[#FAF9F6] font-sans pb-20">
       {/* 1. Cinematic Hero Section with Brand Background Video (Model Face Completely Visible) */}
       <section className="relative -mt-[52px] pt-[52px] h-[95vh] min-h-[660px] w-full overflow-hidden flex flex-col justify-end items-center text-center pb-12 sm:pb-16 md:pb-20">
-        {/* Background Video (Desktop 16:9 & Mobile 9:16, anchored to top so face is always visible) */}
+        {/*
+          Responsive background video:
+          - Mobile uses the dedicated Cloudinary portrait video.
+          - Desktop keeps the existing windows_background.mp4 file.
+          - Desktop object positioning moves the model slightly to the right.
+        */}
         <video
           autoPlay
           loop
           muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover z-0"
-          style={{ objectPosition: "center 8%" }}
+          preload="auto"
+          className="absolute inset-0 z-0 h-full w-full object-cover object-[50%_8%] md:object-[35%_8%]"
+          aria-label="AKIK artisanal clothing collection background video"
         >
-          <source src="/windows_background.mp4" type="video/mp4" media="(min-width: 768px)" />
-          <source src="/mobile_background.mp4" type="video/mp4" />
+          {/* Mobile video */}
+          <source
+            media="(max-width: 767px)"
+            src="https://res.cloudinary.com/suxqbbxr/video/upload/v1789927778/mobile_background.mp4"
+            type="video/mp4"
+          />
+
+          {/* Desktop and laptop video */}
+          <source
+            media="(min-width: 768px)"
+            src="https://res.cloudinary.com/suxqbbxr/video/upload/v1789927767/windows_background.mp4"
+            type="video/mp4"
+          />
+
+          Your browser does not support video playback.
         </video>
 
         {/* Subtle Bottom Vignette Overlay: Leaves the model's face completely clear & unobstructed at the top */}
