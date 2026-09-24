@@ -213,19 +213,36 @@ router.post(
       });
     } catch (err: any) {
       console.error("POST /checkout/create-order error:", err);
-      const isGatewayError =
-        err?.statusCode >= 500 ||
-        err?.name === "RazorpayError" ||
-        err?.code === "ECONNREFUSED" ||
-        err?.code === "ETIMEDOUT";
 
-      const status = isGatewayError ? 502 : 400;
-      const message =
-        process.env.NODE_ENV === "production"
-          ? isGatewayError
-            ? "Payment processor temporarily unavailable. Please try again shortly."
-            : "Failed to initiate payment"
-          : err.message || "Failed to initiate payment";
+      // Classify error source for appropriate status code & user message
+      const razorpayStatusCode = err?.statusCode;
+      const isRazorpayError = typeof razorpayStatusCode === "number";
+      const isGatewayError =
+        razorpayStatusCode >= 500 ||
+        err?.code === "ECONNREFUSED" ||
+        err?.code === "ETIMEDOUT" ||
+        err?.code === "ENOTFOUND";
+      const isAuthError = razorpayStatusCode === 401;
+
+      let status: number;
+      let message: string;
+
+      if (isAuthError) {
+        status = 502;
+        message = "Payment gateway credentials are invalid. Please contact support.";
+      } else if (isGatewayError) {
+        status = 502;
+        message = "Payment processor temporarily unavailable. Please try again shortly.";
+      } else if (isRazorpayError) {
+        status = 502;
+        const desc = err?.error?.description || "Payment gateway rejected the request";
+        message = process.env.NODE_ENV === "production" ? desc : (err.message || desc);
+      } else {
+        // Application-level errors (product not found, cart empty, etc.)
+        status = 400;
+        message = err.message || "Failed to initiate payment";
+      }
+
       res.status(status).json({ error: message });
     }
   }
