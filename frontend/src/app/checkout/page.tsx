@@ -173,7 +173,7 @@ export default function CheckoutPage() {
       });
 
       const clientKeyId =
-        process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || keyId || "";
+        keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
 
       if (!clientKeyId) {
         throw new Error("Payment gateway is temporarily unconfigured. Please contact support.");

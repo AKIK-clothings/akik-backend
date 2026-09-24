@@ -199,11 +199,12 @@ router.post(
         },
       });
 
-      // CRIT-12: Do not return server keyId to client
+      // Provide public keyId to client for checkout modal
       res.json({
         razorpayOrderId: razorpayOrder.id,
         amount: verified.finalTotal * 100,
         currency: "INR",
+        keyId: process.env.RAZORPAY_KEY_ID,
         calculated: {
           subtotal: verified.subtotal,
           couponDiscount: verified.couponDiscount,
