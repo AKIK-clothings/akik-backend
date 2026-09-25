@@ -18,6 +18,7 @@ const SUBCATEGORIES = [
   "Luxury Cotton Satin",
   "Satin Lucknowi Collection",
   "Rose Royale Collection",
+  "PURE COTTON SUITS",
 ];
 
 const SIZES = ["S", "M", "L", "XL", "XXL", "XXXL", "Free Size"];
@@ -31,6 +32,8 @@ export default function AdminEditProductPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [isCustomSubcategory, setIsCustomSubcategory] = useState(false);
+  const [customSubcategory, setCustomSubcategory] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -72,10 +75,20 @@ export default function AdminEditProductPage() {
         return;
       }
 
+      const sub = product.subcategory || "";
+      const isKnownSub = SUBCATEGORIES.includes(sub);
+      if (sub && !isKnownSub) {
+        setIsCustomSubcategory(true);
+        setCustomSubcategory(sub);
+      } else {
+        setIsCustomSubcategory(false);
+        setCustomSubcategory("");
+      }
+
       setForm({
         name: product.name || "",
         category: product.category || "embroidered-satin",
-        subcategory: product.subcategory || "",
+        subcategory: sub,
         regularPrice: String(product.regular_price || ""),
         discountedPrice: String(product.discounted_price || ""),
         description: product.description || "",
@@ -173,10 +186,17 @@ export default function AdminEditProductPage() {
       }
 
       // Step 2: Update product record
+      const finalSubcategory = isCustomSubcategory ? customSubcategory.trim() : form.subcategory;
+      if (isCustomSubcategory && !customSubcategory.trim()) {
+        setError("Please enter a custom subcategory name");
+        setIsSubmitting(false);
+        return;
+      }
+
       await adminApi.updateProduct(id, {
         name: form.name,
         category: form.category,
-        subcategory: form.subcategory,
+        subcategory: finalSubcategory,
         regularPrice: Number(form.regularPrice) || Number(form.discountedPrice),
         discountedPrice: Number(form.discountedPrice),
         sizes: finalSizes,
@@ -276,21 +296,55 @@ export default function AdminEditProductPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">
-                Subcategory *
-              </label>
-              <select
-                name="subcategory"
-                value={form.subcategory}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-[#FAF9F6] border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A]"
-              >
-                {SUBCATEGORIES.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {sub}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-[#75706B] uppercase tracking-wider">
+                  Subcategory *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !isCustomSubcategory;
+                    setIsCustomSubcategory(next);
+                    if (!next) {
+                      setForm((prev) => ({ ...prev, subcategory: SUBCATEGORIES[0] }));
+                    }
+                  }}
+                  className="text-xs text-[#C47D5A] hover:underline font-medium cursor-pointer"
+                >
+                  {isCustomSubcategory ? "Choose from list" : "+ Add custom"}
+                </button>
+              </div>
+              {isCustomSubcategory ? (
+                <input
+                  type="text"
+                  placeholder="Enter custom subcategory (e.g. PURE COTTON SUITS)"
+                  value={customSubcategory}
+                  onChange={(e) => setCustomSubcategory(e.target.value)}
+                  required
+                  className="w-full px-4 py-2.5 bg-[#FAF9F6] border border-[#C47D5A] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#C47D5A]"
+                />
+              ) : (
+                <select
+                  name="subcategory"
+                  value={form.subcategory}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__") {
+                      setIsCustomSubcategory(true);
+                      setCustomSubcategory("");
+                    } else {
+                      handleChange(e);
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 bg-[#FAF9F6] border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A]"
+                >
+                  {SUBCATEGORIES.map((sub) => (
+                    <option key={sub} value={sub}>
+                      {sub}
+                    </option>
+                  ))}
+                  <option value="__custom__">+ Custom Subcategory...</option>
+                </select>
+              )}
             </div>
           </div>
 

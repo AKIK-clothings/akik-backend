@@ -16,6 +16,7 @@ const SUBCATEGORIES = [
   "Luxury Cotton Satin",
   "Satin Lucknowi Collection",
   "Rose Royale Collection",
+  "PURE COTTON SUITS",
 ];
 
 const SIZES = ["S", "M", "L", "XL", "XXL", "XXXL", "Free Size"];
@@ -40,6 +41,8 @@ export default function AdminNewProductPage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [isCustomSubcategory, setIsCustomSubcategory] = useState(false);
+  const [customSubcategory, setCustomSubcategory] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -82,10 +85,17 @@ export default function AdminNewProductPage() {
       }
 
       // Step 1: Create product record
+      const finalSubcategory = isCustomSubcategory ? customSubcategory.trim() : form.subcategory;
+      if (isCustomSubcategory && !customSubcategory.trim()) {
+        setError("Please enter a custom subcategory name");
+        setIsSubmitting(false);
+        return;
+      }
+
       const { product } = await adminApi.createProduct({
         name: form.name,
         category: form.category,
-        subcategory: form.subcategory,
+        subcategory: finalSubcategory,
         regularPrice: Number(form.regularPrice) || Number(form.discountedPrice),
         discountedPrice: Number(form.discountedPrice),
         sizes: finalSizes,
@@ -160,11 +170,51 @@ export default function AdminNewProductPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">Subcategory *</label>
-              <select name="subcategory" value={form.subcategory} onChange={handleChange}
-                className="w-full px-3 py-2.5 border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] bg-white transition-colors">
-                {SUBCATEGORIES.map((sub) => <option key={sub} value={sub}>{sub}</option>)}
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-[#75706B] uppercase tracking-wider">Subcategory *</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !isCustomSubcategory;
+                    setIsCustomSubcategory(next);
+                    if (!next) {
+                      setForm((prev) => ({ ...prev, subcategory: SUBCATEGORIES[0] }));
+                    }
+                  }}
+                  className="text-xs text-[#C47D5A] hover:underline font-medium cursor-pointer"
+                >
+                  {isCustomSubcategory ? "Choose from list" : "+ Add custom"}
+                </button>
+              </div>
+              {isCustomSubcategory ? (
+                <input
+                  type="text"
+                  placeholder="Enter custom subcategory (e.g. PURE COTTON SUITS)"
+                  value={customSubcategory}
+                  onChange={(e) => setCustomSubcategory(e.target.value)}
+                  required
+                  className="w-full px-3 py-2.5 border border-[#C47D5A] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#C47D5A] bg-[#FFFDFC] transition-colors"
+                />
+              ) : (
+                <select
+                  name="subcategory"
+                  value={form.subcategory}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__") {
+                      setIsCustomSubcategory(true);
+                      setCustomSubcategory("");
+                    } else {
+                      handleChange(e);
+                    }
+                  }}
+                  className="w-full px-3 py-2.5 border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] bg-white transition-colors"
+                >
+                  {SUBCATEGORIES.map((sub) => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                  <option value="__custom__">+ Custom Subcategory...</option>
+                </select>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

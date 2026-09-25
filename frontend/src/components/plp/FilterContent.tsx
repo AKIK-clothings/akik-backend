@@ -26,6 +26,7 @@ const SHARED_SUBCATEGORIES = [
   "Luxury Cotton Satin",
   "Satin Lucknowi Collection",
   "Rose Royale Collection",
+  "PURE COTTON SUITS",
 ];
 
 const ALL_SIZES: ApparelSize[] = ["S", "M", "L", "XL", "XXL", "XXXL"];
