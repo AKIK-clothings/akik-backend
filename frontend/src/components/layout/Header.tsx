@@ -65,15 +65,6 @@ export const Header: React.FC = () => {
     }
   };
 
-  // Clear admin auth whenever user is outside /admin
-  useEffect(() => {
-    if (pathname && !pathname.startsWith("/admin")) {
-      sessionStorage.removeItem("akik_admin_token");
-      sessionStorage.removeItem("akik_admin_info");
-      localStorage.removeItem("akik_admin_token");
-      localStorage.removeItem("akik_admin_info");
-    }
-  }, [pathname]);
 
   if (pathname?.startsWith("/admin")) {
     return null;

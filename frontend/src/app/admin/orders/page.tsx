@@ -45,6 +45,9 @@ export default function AdminOrdersPage() {
   const [dateFilter, setDateFilter] = useState(""); // "" = all, "YYYY-MM-DD" = specific day
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Helper: today's date as YYYY-MM-DD in local time
   const todayStr = () => {
@@ -53,18 +56,24 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(() => {
-    loadOrders();
+    setPage(1);
   }, [statusFilter, dateFilter]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [statusFilter, dateFilter, page]);
 
   const loadOrders = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const parts: string[] = [];
+      const parts: string[] = [`page=${page}`, `limit=20`];
       if (statusFilter !== "all") parts.push(`status=${statusFilter}`);
       if (dateFilter) parts.push(`date=${dateFilter}`);
-      const { orders: data } = (await adminApi.getOrders(parts.join("&"))) as { orders: Order[] };
-      setOrders(data);
+      const res = (await adminApi.getOrders(parts.join("&"))) as { orders: Order[]; total?: number; totalPages?: number; page?: number };
+      setOrders(res.orders || []);
+      setTotalCount(res.total || res.orders?.length || 0);
+      setTotalPages(res.totalPages || 1);
     } catch (err) {
       console.error(err);
       setError("Failed to load orders. Please check backend connection and retry.");
@@ -378,6 +387,28 @@ export default function AdminOrdersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4 border-t border-[#EAE5DE]">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="px-4 py-2 text-xs font-semibold rounded-lg border border-[#EAE5DE] bg-white text-[#1A1918] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#F5F3F0] transition-colors"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-[#75706B] font-medium">
+            Page {page} of {totalPages} ({totalCount} total)
+          </span>
+          <button
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="px-4 py-2 text-xs font-semibold rounded-lg border border-[#EAE5DE] bg-white text-[#1A1918] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#F5F3F0] transition-colors"
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

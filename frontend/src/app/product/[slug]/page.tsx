@@ -18,8 +18,12 @@ import {
   Heart,
 } from "lucide-react";
 
+import dynamic from "next/dynamic";
 import { ImageGallery } from "@/components/product/ImageGallery";
-import { SizeGuideModal } from "@/components/product/SizeGuideModal";
+const SizeGuideModal = dynamic(
+  () => import("@/components/product/SizeGuideModal").then((mod) => mod.SizeGuideModal),
+  { ssr: false }
+);
 import { useCart } from "@/context/CartContext";
 import { ApparelSize, ColorVariant, Product } from "@/types/product";
 import { WhatsAppIcon } from "@/components/ui/Icons";
@@ -140,6 +144,7 @@ export default function ProductDetailPage() {
   const handleBuyNow = () => {
     if (!product || product.isSoldOut || isSizeOutOfStock) return;
     addToCart(product, effectiveSize as ApparelSize, selectedColor, 1);
+    router.push("/checkout");
   };
 
   const handleNotifySubmit = (e: React.FormEvent) => {

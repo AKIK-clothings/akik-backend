@@ -69,8 +69,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const secondaryImage =
     selectedColor.secondaryImageSrc || product.secondaryImage || activeImage;
 
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
-    <div className="group relative flex flex-col w-full text-left font-sans">
+    <div
+      className="group relative flex flex-col w-full text-left font-sans"
+      onMouseEnter={() => setIsHovered(true)}
+    >
       {/* 1. Media Container: Aspect Ratio 3:4 */}
       <div className="relative aspect-[3/4] w-full overflow-hidden rounded-md bg-[#F4EFEA] border border-[#EAE5DE]/80 shadow-sm transition-all duration-300 group-hover:shadow-md">
         <Link
@@ -94,8 +99,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               priority={priorityImage}
             />
 
-            {/* Secondary Image Fade-in on Hover (Prompt 2 requirement) */}
-            {!product.isSoldOut && secondaryImage && (
+            {/* Secondary Image Fade-in on Hover - deferred until hover */}
+            {!product.isSoldOut && secondaryImage && isHovered && (
               <Image
                 src={secondaryImage}
                 alt={`${product.name} alternate view`}

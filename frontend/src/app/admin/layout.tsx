@@ -50,9 +50,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       } catch { /* ignore */ }
     }
 
-    // Server-side token validation
+    // Server-side token validation (cached with SWR to prevent duplicate calls on tab change)
     adminApi
-      .request<{ admin?: { name?: string } }>("/api/admin/me")
+      .getMe()
       .then((res) => {
         if (res.admin?.name) {
           setAdminName(res.admin.name);

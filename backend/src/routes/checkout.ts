@@ -196,6 +196,16 @@ router.post(
           subtotal: verified.subtotal.toString(),
           finalTotal: verified.finalTotal.toString(),
           itemCount: verified.verifiedItems.length.toString(),
+          itemsJson: JSON.stringify(
+            verified.verifiedItems.map((item) => ({
+              productId: item.productId,
+              name: item.name,
+              color: item.selectedColor.name,
+              size: item.selectedSize,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+            }))
+          ).slice(0, 490),
         },
       });
 
@@ -300,6 +310,32 @@ router.post(
         .maybeSingle();
 
       if (existingOrder) {
+        // Ensure order_items exist in case webhook created parent order first
+        const { data: existingItems } = await supabase
+          .from("order_items")
+          .select("id")
+          .eq("order_id", existingOrder.id)
+          .limit(1);
+
+        if (!existingItems || existingItems.length === 0) {
+          try {
+            const verified = await calculateAuthoritativeTotals(items, promoCode);
+            const orderItems = verified.verifiedItems.map((item) => ({
+              order_id: existingOrder.id,
+              product_id: item.productId,
+              product_name: item.name,
+              selected_color: item.selectedColor,
+              selected_size: item.selectedSize,
+              quantity: item.quantity,
+              unit_price: item.unitPrice,
+              line_total: item.lineTotal,
+            }));
+            await supabase.from("order_items").insert(orderItems);
+          } catch (itemErr) {
+            console.warn("Backfilling order items for existing order failed:", itemErr);
+          }
+        }
+
         res.json({
           success: true,
           orderNumber: existingOrder.order_number,
@@ -508,27 +544,52 @@ router.post("/webhook", async (req: Request, res: Response): Promise<void> => {
           const amountPaid = paymentEntity?.amount ? paymentEntity.amount / 100 : 0;
           const notes = paymentEntity?.notes || {};
 
-          await supabase.from("orders").insert({
-            order_number: orderNumber,
-            customer_name: paymentEntity?.email ? paymentEntity.email.split("@")[0] : "Customer",
-            customer_phone: paymentEntity?.contact || "N/A",
-            customer_email: paymentEntity?.email,
-            address_line1: notes.address || "Captured via Razorpay Webhook",
-            city: notes.city || "Unknown",
-            state: notes.state || "Unknown",
-            pin_code: notes.pinCode || "000000",
-            subtotal: amountPaid,
-            coupon_discount: 0,
-            shipping_fee: 0,
-            final_total: amountPaid,
-            promo_code: notes.promoCode || null,
-            payment_method: "razorpay",
-            razorpay_order_id: razorpayOrderId,
-            razorpay_payment_id: razorpayPaymentId,
-            payment_status: "paid",
-            status: "confirmed",
-            notes: "Order recorded via Razorpay webhook (browser redirect skipped).",
-          });
+          const { data: newOrder } = await supabase
+            .from("orders")
+            .insert({
+              order_number: orderNumber,
+              customer_name: paymentEntity?.email ? paymentEntity.email.split("@")[0] : "Customer",
+              customer_phone: paymentEntity?.contact || "N/A",
+              customer_email: paymentEntity?.email,
+              address_line1: notes.address || "Captured via Razorpay Webhook",
+              city: notes.city || "Unknown",
+              state: notes.state || "Unknown",
+              pin_code: notes.pinCode || "000000",
+              subtotal: amountPaid,
+              coupon_discount: 0,
+              shipping_fee: 0,
+              final_total: amountPaid,
+              promo_code: notes.promoCode || null,
+              payment_method: "razorpay",
+              razorpay_order_id: razorpayOrderId,
+              razorpay_payment_id: razorpayPaymentId,
+              payment_status: "paid",
+              status: "confirmed",
+              notes: "Order recorded via Razorpay webhook (browser redirect skipped).",
+            })
+            .select()
+            .single();
+
+          if (newOrder && notes.itemsJson) {
+            try {
+              const parsedItems = JSON.parse(notes.itemsJson);
+              if (Array.isArray(parsedItems) && parsedItems.length > 0) {
+                const orderItemsToInsert = parsedItems.map((pi: any) => ({
+                  order_id: newOrder.id,
+                  product_id: pi.productId || null,
+                  product_name: pi.name || "Boutique Ensemble",
+                  selected_color: { name: pi.color || "Default", hexCode: "#C47D5A", imageSrc: "" },
+                  selected_size: pi.size || "M",
+                  quantity: pi.quantity || 1,
+                  unit_price: pi.unitPrice || amountPaid,
+                  line_total: (pi.unitPrice || amountPaid) * (pi.quantity || 1),
+                }));
+                await supabase.from("order_items").insert(orderItemsToInsert);
+              }
+            } catch (itemErr) {
+              console.error("Webhook items parsing error:", itemErr);
+            }
+          }
         }
       }
     }

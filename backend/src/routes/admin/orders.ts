@@ -56,9 +56,32 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// GET /api/admin/dashboard — Quick stats for dashboard
+interface CachedOverviewStats {
+  data: {
+    totalProducts: number;
+    totalOrders: number;
+    newOrders: number;
+    totalRevenue: number;
+    unreadEnquiries: number;
+  };
+  cachedAt: number;
+}
+
+let cachedStatsOverview: CachedOverviewStats | null = null;
+const STATS_OVERVIEW_TTL_MS = 30 * 1000; // 30 seconds
+
+export const invalidateStatsOverviewCache = (): void => {
+  cachedStatsOverview = null;
+};
+
+// GET /api/admin/dashboard — Quick stats for dashboard (cached 30s)
 router.get("/stats/overview", async (_req: Request, res: Response): Promise<void> => {
   try {
+    if (cachedStatsOverview && Date.now() - cachedStatsOverview.cachedAt < STATS_OVERVIEW_TTL_MS) {
+      res.json(cachedStatsOverview.data);
+      return;
+    }
+
     const [
       productsRes,
       ordersRes,
@@ -78,13 +101,16 @@ router.get("/stats/overview", async (_req: Request, res: Response): Promise<void
       0
     );
 
-    res.json({
+    const result = {
       totalProducts: productsRes.count || 0,
       totalOrders: ordersRes.count || 0,
       newOrders: newOrdersRes.count || 0,
       totalRevenue,
       unreadEnquiries: enquiriesRes.count || 0,
-    });
+    };
+
+    cachedStatsOverview = { data: result, cachedAt: Date.now() };
+    res.json(result);
   } catch (err) {
     console.error("Admin GET /orders/stats/overview error:", err);
     res.status(500).json({ error: "Failed to fetch stats" });
@@ -138,6 +164,7 @@ router.patch(
         .single();
 
       if (error) throw error;
+      invalidateStatsOverviewCache();
       res.json({ order });
     } catch (err) {
       console.error("Admin PATCH /orders/:id/status error:", err);

@@ -111,9 +111,29 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+interface CachedFeatured {
+  data: {
+    bestsellers: unknown[];
+    newArrivals: unknown[];
+  };
+  cachedAt: number;
+}
+let cachedFeatured: CachedFeatured | null = null;
+const FEATURED_TTL_MS = 60 * 1000; // 60s
+
+export const invalidateFeaturedCache = (): void => {
+  cachedFeatured = null;
+};
+
 // GET /api/products/featured — Featured products for homepage
 router.get("/featured", async (_req: Request, res: Response): Promise<void> => {
   try {
+    if (cachedFeatured && Date.now() - cachedFeatured.cachedAt < FEATURED_TTL_MS) {
+      res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      res.json(cachedFeatured.data);
+      return;
+    }
+
     const [bestsellersRes, newArrivalsRes] = await Promise.all([
       supabase
         .from("products")
@@ -132,11 +152,15 @@ router.get("/featured", async (_req: Request, res: Response): Promise<void> => {
     if (bestsellersRes.error) throw bestsellersRes.error;
     if (newArrivalsRes.error) throw newArrivalsRes.error;
 
-    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
-    res.json({
+    const result = {
       bestsellers: bestsellersRes.data || [],
       newArrivals: newArrivalsRes.data || [],
-    });
+    };
+
+    cachedFeatured = { data: result, cachedAt: Date.now() };
+
+    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+    res.json(result);
   } catch (err) {
     console.error("GET /products/featured error:", err);
     res.status(500).json({ error: "Failed to fetch featured products" });

@@ -136,6 +136,7 @@ function CollectionsContent() {
 
   // Products state (live from API, fallback to mock)
   const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -148,6 +149,9 @@ function CollectionsContent() {
       })
       .catch((err) => {
         console.warn("API load error, fallback used:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
       });
     return () => {
       isMounted = false;
@@ -424,7 +428,18 @@ function CollectionsContent() {
 
           {/* Product Grid Area (9 Columns on Desktop / 12 on Mobile) */}
           <main className="col-span-12 lg:col-span-9">
-            {filteredProducts.length === 0 ? (
+            {isLoading ? (
+              /* Loading Skeletons */
+              <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-8 sm:gap-x-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="animate-pulse space-y-3">
+                    <div className="aspect-[3/4] bg-[#EAE5DE]/60 rounded-md" />
+                    <div className="h-4 bg-[#EAE5DE]/70 rounded w-3/4" />
+                    <div className="h-3 bg-[#EAE5DE]/50 rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredProducts.length === 0 ? (
               /* Empty State UI */
               <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-lg border border-[#EAE5DE] min-h-[400px]">
                 <div className="w-16 h-16 rounded-full bg-[#F4EFEA] flex items-center justify-center mb-4 text-[#C47D5A]">

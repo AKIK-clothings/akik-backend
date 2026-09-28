@@ -34,14 +34,17 @@ app.use(cookieParser());
 const ALLOWED_ORIGINS = [
   "https://akikbyhafsakhatri.in",
   "https://www.akikbyhafsakhatri.in",
-  "https://www.akikcreationsbyhy.com"
+  "https://www.akikcreationsbyhy.com",
+  "https://akik-web.vercel.app",
 ];
 
 if (process.env.FRONTEND_URL) {
   process.env.FRONTEND_URL.split(",")
     .map((origin) => origin.trim().replace(/\/$/, ""))
     .filter(Boolean)
-    .forEach((origin) => ALLOWED_ORIGINS.push(origin));
+    .forEach((origin) => {
+      if (!ALLOWED_ORIGINS.includes(origin)) ALLOWED_ORIGINS.push(origin);
+    });
 }
 
 if (process.env.NODE_ENV !== "production") {
@@ -54,11 +57,7 @@ app.use(
       // Allow requests with no origin (mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
 
-      const isWhitelisted =
-        ALLOWED_ORIGINS.includes(origin) ||
-        /^https:\/\/akik-[a-zA-Z0-9_.-]+\.vercel\.app$/.test(origin);
-
-      if (isWhitelisted) {
+      if (ALLOWED_ORIGINS.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`Blocked by CORS policy: Origin ${origin} is not allowed`));

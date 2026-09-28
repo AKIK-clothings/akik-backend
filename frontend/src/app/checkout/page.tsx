@@ -180,6 +180,12 @@ export default function CheckoutPage() {
       }
 
       // Step 2: Open Razorpay popup
+      if (typeof window.Razorpay === "undefined") {
+        throw new Error(
+          "Payment gateway could not load. Please disable ad-blockers or browser shields and refresh."
+        );
+      }
+
       const rzp = new window.Razorpay({
         key: clientKeyId,
         amount,

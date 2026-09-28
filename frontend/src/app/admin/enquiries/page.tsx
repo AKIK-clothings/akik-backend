@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Loader2, MessageSquare, CheckCircle } from "lucide-react";
 import { adminApi } from "@/lib/api";
 
@@ -19,23 +19,35 @@ export default function AdminEnquiriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showUnread, setShowUnread] = useState(false);
 
-  useEffect(() => { loadEnquiries(); }, [showUnread]);
+  useEffect(() => {
+    loadEnquiries();
+  }, []);
 
   const loadEnquiries = async () => {
     setIsLoading(true);
     try {
-      const { enquiries: data } = await adminApi.getEnquiries() as { enquiries: Enquiry[] };
-      setEnquiries(showUnread ? data.filter((e) => !e.is_read) : data);
-    } catch (err) { console.error(err); }
-    finally { setIsLoading(false); }
+      const { enquiries: data } = (await adminApi.getEnquiries()) as { enquiries: Enquiry[] };
+      setEnquiries(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleMarkRead = async (id: string) => {
     try {
       await adminApi.markEnquiryRead(id);
-      setEnquiries((prev) => prev.map((e) => e.id === id ? { ...e, is_read: true } : e));
-    } catch (err) { console.error(err); }
+      setEnquiries((prev) => prev.map((e) => (e.id === id ? { ...e, is_read: true } : e)));
+    } catch (err) {
+      console.error(err);
+    }
   };
+
+  const displayedEnquiries = useMemo(
+    () => (showUnread ? enquiries.filter((e) => !e.is_read) : enquiries),
+    [showUnread, enquiries]
+  );
 
   const unreadCount = enquiries.filter((e) => !e.is_read).length;
 
@@ -54,14 +66,14 @@ export default function AdminEnquiriesPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center h-40"><Loader2 className="w-6 h-6 text-[#C47D5A] animate-spin" /></div>
-      ) : enquiries.length === 0 ? (
+      ) : displayedEnquiries.length === 0 ? (
         <div className="bg-white rounded-xl border border-[#EAE5DE] p-12 text-center shadow-sm">
           <MessageSquare className="w-12 h-12 text-[#EAE5DE] mx-auto mb-3" />
           <p className="text-[#75706B] text-sm">No enquiries yet</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {enquiries.map((enquiry) => (
+          {displayedEnquiries.map((enquiry) => (
             <div key={enquiry.id}
               className={`bg-white rounded-xl border p-5 shadow-sm transition-all ${enquiry.is_read ? "border-[#EAE5DE] opacity-70" : "border-[#C47D5A]/40 ring-1 ring-[#C47D5A]/20"}`}
             >

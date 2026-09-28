@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { ShoppingBag, Package, Tag, MessageSquare, TrendingUp, Loader2 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 
@@ -85,18 +86,18 @@ export default function AdminDashboardPage() {
       <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm">
         <h2 className="font-semibold text-[#1A1918] mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
-          <a href="/admin/products/new" className="px-4 py-2 bg-[#C47D5A] text-white text-sm font-medium rounded-lg hover:bg-[#A86947] transition-colors">
+          <Link href="/admin/products/new" className="px-4 py-2 bg-[#C47D5A] text-white text-sm font-medium rounded-lg hover:bg-[#A86947] transition-colors">
             + Add New Product
-          </a>
-          <a href="/admin/orders" className="px-4 py-2 bg-[#1A1918] text-white text-sm font-medium rounded-lg hover:bg-[#2D2B28] transition-colors">
+          </Link>
+          <Link href="/admin/orders" className="px-4 py-2 bg-[#1A1918] text-white text-sm font-medium rounded-lg hover:bg-[#2D2B28] transition-colors">
             View Orders
-          </a>
-          <a href="/admin/promos" className="px-4 py-2 bg-white border border-[#EAE5DE] text-[#1A1918] text-sm font-medium rounded-lg hover:bg-[#F5F3F0] transition-colors">
+          </Link>
+          <Link href="/admin/promos" className="px-4 py-2 bg-white border border-[#EAE5DE] text-[#1A1918] text-sm font-medium rounded-lg hover:bg-[#F5F3F0] transition-colors">
             Manage Promos
-          </a>
-          <a href="/admin/enquiries" className="px-4 py-2 bg-white border border-[#EAE5DE] text-[#1A1918] text-sm font-medium rounded-lg hover:bg-[#F5F3F0] transition-colors">
+          </Link>
+          <Link href="/admin/enquiries" className="px-4 py-2 bg-white border border-[#EAE5DE] text-[#1A1918] text-sm font-medium rounded-lg hover:bg-[#F5F3F0] transition-colors">
             View Enquiries
-          </a>
+          </Link>
         </div>
       </div>
     </div>

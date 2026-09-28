@@ -12,11 +12,19 @@ import {
   Scissors,
 } from "lucide-react";
 
+import dynamic from "next/dynamic";
+
 import { ProductCard } from "@/components/product/ProductCard";
 import { NAVIGATION_CATEGORIES } from "@/data/navigationData";
-import { CraftProcessShowcase } from "@/components/home/CraftProcessShowcase";
 import { api, mapApiProduct } from "@/lib/api";
 import { Product } from "@/types/product";
+
+const CraftProcessShowcase = dynamic(
+  () => import("@/components/home/CraftProcessShowcase").then((mod) => mod.CraftProcessShowcase),
+  {
+    loading: () => <div className="h-96 bg-[#141312] animate-pulse" />,
+  }
+);
 
 export default function HomePage() {
   const [bestsellers, setBestsellers] = useState<Product[]>([]);

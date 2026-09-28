@@ -108,8 +108,10 @@ export function mapApiProduct(p: ApiProduct) {
 
 // ─── Public API Functions ─────────────────────────────────────────────────────
 
+import { memoryCache } from "./cache";
+
 export const api = {
-  /** Fetch products with optional filters */
+  /** Fetch products with optional filters (cached with 3m stale time) */
   async getProducts(params?: Record<string, string | string[]>): Promise<ApiProduct[]> {
     const searchParams = new URLSearchParams();
     if (params) {
@@ -121,32 +123,46 @@ export const api = {
         }
       }
     }
-    const res = await fetch(`${BASE_URL}/api/products?${searchParams}`, {
-      next: { revalidate: 60 }, // Cache for 60s (Next.js ISR)
-    });
-    if (!res.ok) throw new Error("Failed to fetch products");
-    const data = await res.json();
-    return data.products;
+    const cacheKey = `public:products:${searchParams.toString()}`;
+    return memoryCache.fetchWithCache(
+      cacheKey,
+      async () => {
+        const res = await fetch(`${BASE_URL}/api/products?${searchParams}`);
+        if (!res.ok) throw new Error("Failed to fetch products");
+        const data = await res.json();
+        return data.products as ApiProduct[];
+      },
+      { staleTimeMs: 3 * 60 * 1000 }
+    );
   },
 
-  /** Fetch a single product by slug */
+  /** Fetch a single product by slug (cached with 5m stale time) */
   async getProduct(slug: string): Promise<ApiProduct | null> {
-    const res = await fetch(`${BASE_URL}/api/products/${slug}`, {
-      next: { revalidate: 60 },
-    });
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error("Failed to fetch product");
-    const data = await res.json();
-    return data.product;
+    const cacheKey = `public:product:${slug}`;
+    return memoryCache.fetchWithCache(
+      cacheKey,
+      async () => {
+        const res = await fetch(`${BASE_URL}/api/products/${slug}`);
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error("Failed to fetch product");
+        const data = await res.json();
+        return data.product as ApiProduct;
+      },
+      { staleTimeMs: 5 * 60 * 1000 }
+    );
   },
 
-  /** Fetch featured/bestseller products for homepage */
+  /** Fetch featured/bestseller products for homepage (cached with 3m stale time) */
   async getFeaturedProducts(): Promise<{ bestsellers: ApiProduct[]; newArrivals: ApiProduct[] }> {
-    const res = await fetch(`${BASE_URL}/api/products/featured`, {
-      next: { revalidate: 120 },
-    });
-    if (!res.ok) throw new Error("Failed to fetch featured products");
-    return res.json();
+    return memoryCache.fetchWithCache(
+      "public:products:featured",
+      async () => {
+        const res = await fetch(`${BASE_URL}/api/products/featured`);
+        if (!res.ok) throw new Error("Failed to fetch featured products");
+        return res.json();
+      },
+      { staleTimeMs: 3 * 60 * 1000 }
+    );
   },
 
   /** Validate a promo code */
@@ -174,7 +190,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    return res.json();
+    const result = await res.json();
+    if (res.ok) {
+      memoryCache.invalidate("admin:enquiries");
+      memoryCache.invalidate("admin:stats");
+    }
+    return result;
   },
 
   /** Step 1: Create Razorpay order */
@@ -218,6 +239,9 @@ export const api = {
       const err = await res.json().catch(() => ({ error: "Payment verification failed" }));
       throw new Error(err.error || "Payment verification failed");
     }
+    // Invalidate orders and dashboard stats on order confirmation
+    memoryCache.invalidate("admin:orders");
+    memoryCache.invalidate("admin:stats");
     return res.json();
   },
 };
@@ -234,7 +258,9 @@ export const adminApi = {
       credentials: "include",
     });
     if (!res.ok) throw new Error("Invalid credentials");
-    return res.json();
+    const data = await res.json();
+    memoryCache.clear();
+    return data;
   },
 
   /** Logout admin */
@@ -247,6 +273,7 @@ export const adminApi = {
       sessionStorage.removeItem("akik_admin_info");
       sessionStorage.removeItem("akik_admin_token");
     }
+    memoryCache.clear();
   },
 
   /** Generic authenticated request helper (MED-03) */
@@ -279,12 +306,60 @@ export const adminApi = {
     return res.json();
   },
 
-  getStats: () => adminApi.request<{ totalProducts: number; totalOrders: number; newOrders: number; totalRevenue: number; unreadEnquiries: number }>("/api/admin/orders/stats/overview"),
-  getProducts: () => adminApi.request<{ products: ApiProduct[] }>("/api/admin/products"),
-  getProduct: (id: string) => adminApi.request<{ product: ApiProduct }>(`/api/admin/products/${id}`),
-  createProduct: (data: object) => adminApi.request("/api/admin/products", { method: "POST", body: JSON.stringify(data) }),
-  updateProduct: (id: string, data: object) => adminApi.request(`/api/admin/products/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deleteProduct: (id: string) => adminApi.request(`/api/admin/products/${id}`, { method: "DELETE" }),
+  /** Verify session token with 5m client-side cache */
+  getMe: () =>
+    memoryCache.fetchWithCache(
+      "admin:me",
+      () => adminApi.request<{ admin?: { id?: string; name?: string; email?: string; role?: string } }>("/api/admin/me"),
+      { staleTimeMs: 5 * 60 * 1000 }
+    ),
+
+  getStats: () =>
+    memoryCache.fetchWithCache(
+      "admin:stats",
+      () => adminApi.request<{ totalProducts: number; totalOrders: number; newOrders: number; totalRevenue: number; unreadEnquiries: number }>("/api/admin/orders/stats/overview"),
+      { staleTimeMs: 45 * 1000 }
+    ),
+
+  getProducts: () =>
+    memoryCache.fetchWithCache(
+      "admin:products:all",
+      () => adminApi.request<{ products: ApiProduct[] }>("/api/admin/products"),
+      { staleTimeMs: 2 * 60 * 1000 }
+    ),
+
+  getProduct: (id: string) =>
+    memoryCache.fetchWithCache(
+      `admin:product:${id}`,
+      () => adminApi.request<{ product: ApiProduct }>(`/api/admin/products/${id}`),
+      { staleTimeMs: 3 * 60 * 1000 }
+    ),
+
+  createProduct: async (data: object) => {
+    const res = await adminApi.request("/api/admin/products", { method: "POST", body: JSON.stringify(data) });
+    memoryCache.invalidate("admin:products");
+    memoryCache.invalidate("public:products");
+    memoryCache.invalidate("admin:stats");
+    return res;
+  },
+
+  updateProduct: async (id: string, data: object) => {
+    const res = await adminApi.request(`/api/admin/products/${id}`, { method: "PUT", body: JSON.stringify(data) });
+    memoryCache.invalidate("admin:products");
+    memoryCache.invalidate(`admin:product:${id}`);
+    memoryCache.invalidate("public:product");
+    memoryCache.invalidate("public:products");
+    return res;
+  },
+
+  deleteProduct: async (id: string) => {
+    const res = await adminApi.request(`/api/admin/products/${id}`, { method: "DELETE" });
+    memoryCache.invalidate("admin:products");
+    memoryCache.invalidate(`admin:product:${id}`);
+    memoryCache.invalidate("public:products");
+    memoryCache.invalidate("admin:stats");
+    return res;
+  },
 
   uploadImages: async (productId: string, files: File[]) => {
     const token =
@@ -300,15 +375,61 @@ export const adminApi = {
       body: formData,
     });
     if (!res.ok) throw new Error("Image upload failed");
+    memoryCache.invalidate(`admin:product:${productId}`);
+    memoryCache.invalidate("public:product");
     return res.json();
   },
 
-  getOrders: (params?: string) => adminApi.request<{ orders: unknown[]; total: number }>(`/api/admin/orders${params ? `?${params}` : ""}`),
-  updateOrderStatus: (id: string, status: string, notes?: string) => adminApi.request(`/api/admin/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, notes }) }),
-  getPromos: () => adminApi.request<{ promos: unknown[] }>("/api/admin/promos"),
-  createPromo: (data: object) => adminApi.request("/api/admin/promos", { method: "POST", body: JSON.stringify(data) }),
-  updatePromo: (id: string, data: object) => adminApi.request(`/api/admin/promos/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deletePromo: (id: string) => adminApi.request(`/api/admin/promos/${id}`, { method: "DELETE" }),
-  getEnquiries: () => adminApi.request<{ enquiries: unknown[] }>("/api/admin/enquiries"),
-  markEnquiryRead: (id: string) => adminApi.request(`/api/admin/enquiries/${id}/read`, { method: "PATCH" }),
+  getOrders: (params?: string) =>
+    memoryCache.fetchWithCache(
+      `admin:orders:${params || ""}`,
+      () => adminApi.request<{ orders: unknown[]; total: number; page?: number; totalPages?: number }>(`/api/admin/orders${params ? `?${params}` : ""}`),
+      { staleTimeMs: 30 * 1000 }
+    ),
+
+  updateOrderStatus: async (id: string, status: string, notes?: string) => {
+    const res = await adminApi.request(`/api/admin/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, notes }) });
+    memoryCache.invalidate("admin:orders");
+    memoryCache.invalidate("admin:stats");
+    return res;
+  },
+
+  getPromos: () =>
+    memoryCache.fetchWithCache(
+      "admin:promos",
+      () => adminApi.request<{ promos: unknown[] }>("/api/admin/promos"),
+      { staleTimeMs: 3 * 60 * 1000 }
+    ),
+
+  createPromo: async (data: object) => {
+    const res = await adminApi.request("/api/admin/promos", { method: "POST", body: JSON.stringify(data) });
+    memoryCache.invalidate("admin:promos");
+    return res;
+  },
+
+  updatePromo: async (id: string, data: object) => {
+    const res = await adminApi.request(`/api/admin/promos/${id}`, { method: "PUT", body: JSON.stringify(data) });
+    memoryCache.invalidate("admin:promos");
+    return res;
+  },
+
+  deletePromo: async (id: string) => {
+    const res = await adminApi.request(`/api/admin/promos/${id}`, { method: "DELETE" });
+    memoryCache.invalidate("admin:promos");
+    return res;
+  },
+
+  getEnquiries: () =>
+    memoryCache.fetchWithCache(
+      "admin:enquiries",
+      () => adminApi.request<{ enquiries: unknown[] }>("/api/admin/enquiries"),
+      { staleTimeMs: 30 * 1000 }
+    ),
+
+  markEnquiryRead: async (id: string) => {
+    const res = await adminApi.request(`/api/admin/enquiries/${id}/read`, { method: "PATCH" });
+    memoryCache.invalidate("admin:enquiries");
+    memoryCache.invalidate("admin:stats");
+    return res;
+  },
 };
