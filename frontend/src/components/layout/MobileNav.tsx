@@ -12,6 +12,7 @@ import {
   Search,
   Phone,
   ArrowRight,
+  Package,
 } from "lucide-react";
 import { NAVIGATION_CATEGORIES } from "@/data/navigationData";
 import { useCart } from "@/context/CartContext";
@@ -199,6 +200,18 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
                 >
                   <span>All Collections</span>
                   <span className="text-xs text-[#75706B]">Browse</span>
+                </Link>
+
+                <Link
+                  href="/track-order"
+                  onClick={onClose}
+                  className="flex items-center justify-between py-1.5 text-sm font-medium text-[#1F1E1D] hover:text-[#C47D5A]"
+                >
+                  <span className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-[#C47D5A]" />
+                    Track Order
+                  </span>
+                  <span className="text-xs text-[#C47D5A] font-semibold">Live</span>
                 </Link>
 
                 <Link

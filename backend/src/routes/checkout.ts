@@ -601,4 +601,76 @@ router.post("/webhook", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// ─── GET /api/checkout/track ──────────────────────────────────────────────────
+// Public guest order tracking endpoint (No account or password needed)
+router.get("/track", checkoutLimiter, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { orderNumber, phone } = req.query;
+
+    if (!orderNumber || typeof orderNumber !== "string") {
+      res.status(400).json({ error: "Order number is required" });
+      return;
+    }
+    if (!phone || typeof phone !== "string") {
+      res.status(400).json({ error: "Mobile number is required" });
+      return;
+    }
+
+    const cleanOrderNumber = orderNumber.trim().toUpperCase();
+    const cleanPhone = phone.replace(/[^0-9]/g, "").slice(-10);
+
+    if (cleanPhone.length < 10) {
+      res.status(400).json({ error: "Please enter a valid 10-digit mobile number" });
+      return;
+    }
+
+    const { data: order, error } = await supabase
+      .from("orders")
+      .select("id, order_number, customer_name, customer_phone, city, state, subtotal, coupon_discount, shipping_fee, final_total, status, payment_status, created_at, updated_at, order_items(id, product_name, selected_color, selected_size, quantity, unit_price, line_total)")
+      .eq("order_number", cleanOrderNumber)
+      .ilike("customer_phone", `%${cleanPhone}%`)
+      .maybeSingle();
+
+    if (error || !order) {
+      res.status(404).json({
+        error: "No order found matching this order number and mobile number. Please verify your details."
+      });
+      return;
+    }
+
+    // Mask phone for privacy in public response: ••••••1234
+    const maskedPhone = order.customer_phone.replace(/\d(?=\d{4})/g, "•");
+
+    res.json({
+      success: true,
+      order: {
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        customerPhoneMasked: maskedPhone,
+        city: order.city,
+        state: order.state,
+        subtotal: order.subtotal,
+        couponDiscount: order.coupon_discount || 0,
+        shippingFee: order.shipping_fee || 0,
+        finalTotal: order.final_total,
+        status: order.status,
+        paymentStatus: order.payment_status,
+        createdAt: order.created_at,
+        updatedAt: order.updated_at,
+        items: (order.order_items || []).map((item: any) => ({
+          name: item.product_name,
+          color: item.selected_color?.name || "Default",
+          size: item.selected_size,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          lineTotal: item.line_total,
+        })),
+      },
+    });
+  } catch (err: any) {
+    console.error("GET /checkout/track error:", err);
+    res.status(500).json({ error: "Failed to retrieve order tracking details" });
+  }
+});
+
 export default router;

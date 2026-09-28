@@ -4,7 +4,7 @@ import React, { Suspense, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle, ShoppingBag, MessageCircle } from "lucide-react";
+import { CheckCircle, ShoppingBag, MessageCircle, Package } from "lucide-react";
 import { WhatsAppIcon } from "@/components/ui/Icons";
 import { InstagramIcon } from "@/components/ui/Icons";
 import { CONTACT_INFO } from "@/data/contactInfo";
@@ -13,6 +13,7 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const orderNumber = searchParams.get("order");
+  const phone = searchParams.get("phone");
   const waUrl = searchParams.get("wa");
 
   useEffect(() => {
@@ -90,14 +91,18 @@ function SuccessContent() {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <Link href="/collections"
-            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#1F1E1D] text-white text-sm font-semibold rounded-xl hover:bg-[#C47D5A] transition-colors">
+          <Link
+            href={`/track-order?order=${encodeURIComponent(orderNumber)}${phone ? `&phone=${encodeURIComponent(phone)}` : ""}`}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#1F1E1D] text-white text-sm font-semibold rounded-xl hover:bg-[#C47D5A] transition-colors shadow-sm"
+          >
+            <Package className="w-4 h-4" /> Track Order Status
+          </Link>
+          <Link
+            href="/collections"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white border border-[#EAE5DE] text-[#1F1E1D] text-sm font-semibold rounded-xl hover:border-[#C47D5A] hover:text-[#C47D5A] transition-colors"
+          >
             <ShoppingBag className="w-4 h-4" /> Continue Shopping
           </Link>
-          <a href={CONTACT_INFO.whatsappLink} target="_blank" rel="noopener noreferrer"
-            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-[#EAE5DE] text-[#1F1E1D] text-sm font-semibold rounded-xl hover:border-[#25D366] hover:text-[#25D366] transition-colors">
-            <MessageCircle className="w-4 h-4" /> Contact Us
-          </a>
         </div>
 
         <a href={CONTACT_INFO.instagramUrl} target="_blank" rel="noopener noreferrer"

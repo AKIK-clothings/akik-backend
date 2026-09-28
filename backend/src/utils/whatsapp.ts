@@ -114,7 +114,8 @@ ${itemLines}
 ${order.address}
 
 ━━━━━━━━━━━━━━━━━
-🕐 Your order will be *dispatched within 24-48 hours*. You'll receive tracking details on this WhatsApp number.
+🕐 Your order will be *dispatched within 24-48 hours*.
+🔍 *Track Order Live:* https://akikbyhafsakhatri.in/track-order?order=${order.orderNumber}&phone=${order.customerPhone.replace(/\D/g, "").slice(-10)}
 
 Thank you for choosing AKIK! If you have any questions, just reply here. 🙏`;
 

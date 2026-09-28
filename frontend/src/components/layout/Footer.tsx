@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Sparkles, ArrowUpRight } from "lucide-react";
+import { Sparkles, ArrowUpRight, Package } from "lucide-react";
 import { WhatsAppIcon, InstagramIcon } from "@/components/ui/Icons";
 import { CONTACT_INFO } from "@/data/contactInfo";
 
@@ -47,6 +47,14 @@ export const Footer: React.FC = () => {
 
           {/* Contact, WhatsApp & Instagram Links */}
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+            <Link
+              href="/track-order"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/10 hover:bg-[#C47D5A] text-white text-xs font-medium transition-all duration-200 border border-white/10 hover:border-[#C47D5A]"
+            >
+              <Package className="w-3.5 h-3.5 text-[#C47D5A]" />
+              <span>Track Order</span>
+            </Link>
+
             <Link
               href="/contact"
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/10 hover:bg-[#C47D5A] text-white text-xs font-medium transition-all duration-200 border border-white/10 hover:border-[#C47D5A]"

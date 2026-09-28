@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   ChevronDown,
   Sparkles,
+  Package,
 } from "lucide-react";
 import { MegaMenu } from "./MegaMenu";
 import { MobileNav } from "./MobileNav";
@@ -280,6 +281,20 @@ export const Header: React.FC = () => {
               >
                 <InstagramIcon className="w-4 h-4" />
               </a>
+
+              {/* Track Order Link */}
+              <Link
+                href="/track-order"
+                aria-label="Track your order"
+                title="Track order status"
+                className={`p-1.5 rounded-full transition-colors ${
+                  isTransparent
+                    ? "text-white hover:text-[#C47D5A] hover:bg-white/10"
+                    : "text-[#1F1E1D] hover:text-[#C47D5A] hover:bg-[#F4EFEA]"
+                }`}
+              >
+                <Package className="w-4 h-4" />
+              </Link>
 
               {/* WhatsApp Quick Link */}
               <a

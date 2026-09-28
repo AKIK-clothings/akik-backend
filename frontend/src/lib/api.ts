@@ -244,6 +244,47 @@ export const api = {
     memoryCache.invalidate("admin:stats");
     return res.json();
   },
+
+  /** Public guest order tracking */
+  async trackOrder(
+    orderNumber: string,
+    phone: string
+  ): Promise<{
+    success: boolean;
+    order: {
+      orderNumber: string;
+      customerName: string;
+      customerPhoneMasked: string;
+      city: string;
+      state: string;
+      subtotal: number;
+      couponDiscount: number;
+      shippingFee: number;
+      finalTotal: number;
+      status: string;
+      paymentStatus: string;
+      createdAt: string;
+      items: Array<{
+        name: string;
+        color: string;
+        size: string;
+        quantity: number;
+        unitPrice: number;
+        lineTotal: number;
+      }>;
+    };
+  }> {
+    const params = new URLSearchParams({
+      orderNumber: orderNumber.trim(),
+      phone: phone.trim(),
+    });
+    const res = await fetch(`${BASE_URL}/api/checkout/track?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to locate order");
+    }
+    return data;
+  },
 };
 
 // ─── Admin API Functions ──────────────────────────────────────────────────────

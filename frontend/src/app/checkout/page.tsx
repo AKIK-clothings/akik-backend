@@ -220,10 +220,12 @@ export default function CheckoutPage() {
               window.open(customerWhatsAppUrl, "_blank", "noopener,noreferrer");
             }
 
-            // Clear cart and redirect to success (pass wa URL as fallback for blocked popups)
+            // Clear cart and redirect to success (pass phone and wa URL)
             clearCart();
+            const cleanPhone = form.phone.replace(/\D/g, "").slice(-10);
+            const phoneParam = cleanPhone ? `&phone=${encodeURIComponent(cleanPhone)}` : "";
             const waParam = customerWhatsAppUrl ? `&wa=${encodeURIComponent(customerWhatsAppUrl)}` : "";
-            router.push(`/checkout/success?order=${orderNumber}${waParam}`);
+            router.push(`/checkout/success?order=${orderNumber}${phoneParam}${waParam}`);
           } catch (err) {
             setError("Payment was successful but we couldn't save your order. Please WhatsApp us immediately with your payment ID: " + response.razorpay_payment_id);
             console.error(err);
