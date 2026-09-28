@@ -11,27 +11,31 @@ const router = Router();
 // POST /api/admin/login
 router.post("/login", authLimiter, validateBody(adminLoginSchema), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password } = req.body;
+    const rawEmail = req.body.email;
+    const rawPassword = req.body.password;
 
-    if (!email || !password) {
+    if (!rawEmail || !rawPassword) {
       res.status(400).json({ error: "Email and password are required" });
       return;
     }
 
+    const cleanEmail = rawEmail.trim().toLowerCase();
+    const cleanPassword = typeof rawPassword === "string" ? rawPassword.trim() : rawPassword;
+
     const { data: admin, error } = await supabase
       .from("admins")
       .select("*")
-      .eq("email", email.toLowerCase())
-      .single();
+      .ilike("email", cleanEmail)
+      .maybeSingle();
 
     if (error || !admin) {
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Invalid email or password" });
       return;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, admin.password_hash);
+    const isPasswordValid = await bcrypt.compare(cleanPassword, admin.password_hash);
     if (!isPasswordValid) {
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Invalid email or password" });
       return;
     }
 

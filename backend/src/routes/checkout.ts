@@ -626,7 +626,7 @@ router.get("/track", checkoutLimiter, async (req: Request, res: Response): Promi
 
     const { data: order, error } = await supabase
       .from("orders")
-      .select("id, order_number, customer_name, customer_phone, city, state, subtotal, coupon_discount, shipping_fee, final_total, status, payment_status, created_at, updated_at, order_items(id, product_name, selected_color, selected_size, quantity, unit_price, line_total)")
+      .select("id, order_number, customer_name, customer_phone, customer_email, address_line1, address_line2, city, state, pin_code, promo_code, subtotal, coupon_discount, shipping_fee, final_total, status, payment_status, created_at, updated_at, order_items(id, product_name, selected_color, selected_size, quantity, unit_price, line_total)")
       .eq("order_number", cleanOrderNumber)
       .ilike("customer_phone", `%${cleanPhone}%`)
       .maybeSingle();
@@ -647,9 +647,14 @@ router.get("/track", checkoutLimiter, async (req: Request, res: Response): Promi
         orderNumber: order.order_number,
         customerName: order.customer_name,
         customerPhoneMasked: maskedPhone,
-        city: order.city,
-        state: order.state,
+        customerEmail: order.customer_email || "",
+        addressLine1: order.address_line1 || "",
+        addressLine2: order.address_line2 || "",
+        city: order.city || "",
+        state: order.state || "",
+        pinCode: order.pin_code || "",
         subtotal: order.subtotal,
+        promoCode: order.promo_code || null,
         couponDiscount: order.coupon_discount || 0,
         shippingFee: order.shipping_fee || 0,
         finalTotal: order.final_total,
@@ -660,6 +665,7 @@ router.get("/track", checkoutLimiter, async (req: Request, res: Response): Promi
         items: (order.order_items || []).map((item: any) => ({
           name: item.product_name,
           color: item.selected_color?.name || "Default",
+          image: item.selected_color?.imageSrc || "",
           size: item.selected_size,
           quantity: item.quantity,
           unitPrice: item.unit_price,

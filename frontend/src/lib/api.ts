@@ -255,8 +255,13 @@ export const api = {
       orderNumber: string;
       customerName: string;
       customerPhoneMasked: string;
+      customerEmail?: string;
+      addressLine1?: string;
+      addressLine2?: string;
       city: string;
       state: string;
+      pinCode?: string;
+      promoCode?: string | null;
       subtotal: number;
       couponDiscount: number;
       shippingFee: number;
@@ -264,9 +269,11 @@ export const api = {
       status: string;
       paymentStatus: string;
       createdAt: string;
+      updatedAt?: string;
       items: Array<{
         name: string;
         color: string;
+        image?: string;
         size: string;
         quantity: number;
         unitPrice: number;
@@ -292,13 +299,28 @@ export const api = {
 export const adminApi = {
   /** Login and get JWT token */
   async login(email: string, password: string): Promise<{ token: string; admin: { id: string; name: string; email: string } }> {
-    const res = await fetch(`${BASE_URL}/api/admin/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Invalid credentials");
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/api/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
+        credentials: "include",
+      });
+    } catch (networkErr: any) {
+      throw new Error(
+        `Unable to connect to backend server (${BASE_URL}). Please verify your network connection.`
+      );
+    }
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Invalid email or password. Please try again.");
+    }
+
     const data = await res.json();
     memoryCache.clear();
     return data;

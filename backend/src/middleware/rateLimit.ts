@@ -3,10 +3,10 @@ import rateLimit from "express-rate-limit";
 // Limit login attempts to prevent brute force (SEC-05)
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many login attempts. Please try again after 15 minutes." },
+  message: { error: "Too many login attempts. Please wait 15 minutes before trying again." },
 });
 
 // Limit checkout order creation to prevent Razorpay quota exhaustion
