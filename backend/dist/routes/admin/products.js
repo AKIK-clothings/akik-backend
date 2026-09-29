@@ -1,10 +1,14 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const supabase_1 = require("../../config/supabase");
 const auth_1 = require("../../middleware/auth");
 const upload_1 = require("../../middleware/upload");
 const slugify_1 = require("../../utils/slugify");
+const sharp_1 = __importDefault(require("sharp"));
 const validate_1 = require("../../middleware/validate");
 const router = (0, express_1.Router)();
 // All routes in this file require admin authentication
@@ -214,11 +218,17 @@ router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upl
                 res.status(400).json({ error: `Invalid image file extension ".${fileExt}". Allowed: ${allowedExts.join(", ")}` });
                 return;
             }
-            const fileName = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            // Compress and resize image to WebP (max 1200px, 80% quality)
+            const compressedBuffer = await (0, sharp_1.default)(file.buffer)
+                .resize({ width: 1200, withoutEnlargement: true })
+                .webp({ quality: 80, effort: 4 })
+                .toBuffer();
+            const fileName = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
             const { error: uploadError } = await supabase_1.supabase.storage
                 .from("product-images")
-                .upload(fileName, file.buffer, {
-                contentType: file.mimetype,
+                .upload(fileName, compressedBuffer, {
+                contentType: "image/webp",
+                cacheControl: "31536000, public, immutable",
                 upsert: false,
             });
             if (uploadError)

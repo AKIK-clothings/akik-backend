@@ -3,6 +3,7 @@ import { supabase } from "../../config/supabase";
 import { requireAdmin } from "../../middleware/auth";
 import { upload } from "../../middleware/upload";
 import { slugify } from "../../utils/slugify";
+import sharp from "sharp";
 import {
   validateBody,
   validateUuidParam,
@@ -248,12 +249,19 @@ router.post(
           return;
         }
 
-        const fileName = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        // Compress and resize image to WebP (max 1200px, 80% quality)
+        const compressedBuffer = await sharp(file.buffer)
+          .resize({ width: 1200, withoutEnlargement: true })
+          .webp({ quality: 80, effort: 4 })
+          .toBuffer();
+
+        const fileName = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
 
         const { error: uploadError } = await supabase.storage
           .from("product-images")
-          .upload(fileName, file.buffer, {
-            contentType: file.mimetype,
+          .upload(fileName, compressedBuffer, {
+            contentType: "image/webp",
+            cacheControl: "31536000, public, immutable",
             upsert: false,
           });
 
