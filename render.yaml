@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: akik-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: yarn install && yarn build
+    startCommand: yarn start
+    envVars:
+      - key: NODE_ENV
+        value: production

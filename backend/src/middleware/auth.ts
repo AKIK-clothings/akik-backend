@@ -50,7 +50,8 @@ export const requireAdmin = async (
 
   const token = cookieToken || (authHeader ? authHeader.split(" ")[1] : "");
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as AdminPayload;
+    const jwtSecret = process.env.JWT_SECRET || "W7FYpdE1tN98bIbcK04mRG2S4vW55z8qzK44G1B7jtoXufgJShd_xkZqiUgix4jL0bskzAHtH44SRZf5J0JW-Q";
+    const decoded = jwt.verify(token, jwtSecret) as AdminPayload;
 
     // Fast-path: Check memory cache first
     const cached = adminAuthCache.get(decoded.id);

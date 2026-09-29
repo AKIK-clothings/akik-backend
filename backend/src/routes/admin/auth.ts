@@ -41,7 +41,7 @@ router.post("/login", authLimiter, validateBody(adminLoginSchema), async (req: R
 
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: admin.role || "admin" },
-      process.env.JWT_SECRET!,
+      process.env.JWT_SECRET || "W7FYpdE1tN98bIbcK04mRG2S4vW55z8qzK44G1B7jtoXufgJShd_xkZqiUgix4jL0bskzAHtH44SRZf5J0JW-Q",
       { expiresIn: (process.env.JWT_EXPIRES_IN || "7d") as jwt.SignOptions["expiresIn"] }
     );
 

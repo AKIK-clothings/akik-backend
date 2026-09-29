@@ -1,0 +1,552 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const crypto_1 = __importDefault(require("crypto"));
+const razorpay_1 = require("../config/razorpay");
+const supabase_1 = require("../config/supabase");
+const orderNumber_1 = require("../utils/orderNumber");
+const whatsapp_1 = require("../utils/whatsapp");
+const rateLimit_1 = require("../middleware/rateLimit");
+const validate_1 = require("../middleware/validate");
+const router = (0, express_1.Router)();
+// ─── Authoritative Server-Side Price Recalculation (SEC-01) ───────────────────
+async function calculateAuthoritativeTotals(rawItems, requestedPromoCode) {
+    if (!rawItems || rawItems.length === 0) {
+        throw new Error("Cart is empty");
+    }
+    const isUuid = (str) => Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+    const verifiedItems = [];
+    let subtotal = 0;
+    const uuidIds = rawItems.map(i => i.productId).filter(isUuid);
+    const nonUuidIds = rawItems.map(i => i.productId).filter(id => !isUuid(id));
+    const itemNames = rawItems.map(i => i.name).filter(Boolean);
+    // Run bulk queries concurrently (fixes SEC-04 and SEC-08)
+    const [uuidRes, slugRes, nameRes] = await Promise.all([
+        uuidIds.length > 0 ? supabase_1.supabase.from("products").select("*").in("id", uuidIds) : Promise.resolve({ data: [] }),
+        nonUuidIds.length > 0 ? supabase_1.supabase.from("products").select("*").in("slug", nonUuidIds) : Promise.resolve({ data: [] }),
+        itemNames.length > 0 ? supabase_1.supabase.from("products").select("*").in("name", itemNames) : Promise.resolve({ data: [] })
+    ]);
+    const allProducts = [
+        ...(uuidRes.data || []),
+        ...(slugRes.data || []),
+        ...(nameRes.data || [])
+    ];
+    // Create a fast lookup map
+    const productMap = new Map();
+    for (const p of allProducts) {
+        productMap.set(p.id, p);
+        productMap.set(p.slug, p);
+        if (p.name)
+            productMap.set(p.name, p);
+    }
+    for (const item of rawItems) {
+        let product = productMap.get(item.productId);
+        // Fallback check by name if product ID was from client mock data
+        if (!product && item.name) {
+            product = productMap.get(item.name);
+        }
+        if (!product) {
+            throw new Error(`Product "${item.name || item.productId}" could not be found`);
+        }
+        if (!product.is_active) {
+            throw new Error(`Product "${product.name}" is no longer available`);
+        }
+        if (product.is_sold_out) {
+            throw new Error(`Product "${product.name}" is sold out`);
+        }
+        const unitPrice = product.discounted_price;
+        const lineTotal = unitPrice * item.quantity;
+        subtotal += lineTotal;
+        verifiedItems.push({
+            productId: product.id,
+            name: product.name,
+            selectedColor: {
+                name: item.selectedColor.name,
+                hexCode: item.selectedColor.hexCode,
+                imageSrc: item.selectedColor.imageSrc || product.primary_image || "",
+            },
+            selectedSize: item.selectedSize,
+            quantity: item.quantity,
+            unitPrice,
+            lineTotal,
+        });
+    }
+    // Authoritative shipping fee calculation: >= ₹3000 free shipping, else ₹150
+    const shippingFee = subtotal >= 3000 ? 0 : 150;
+    // Authoritative promo code discount verification
+    let couponDiscount = 0;
+    let appliedPromoCode = undefined;
+    if (requestedPromoCode && requestedPromoCode.trim()) {
+        const cleanCode = requestedPromoCode.trim().toUpperCase();
+        const { data: promo } = await supabase_1.supabase
+            .from("promo_codes")
+            .select("*")
+            .eq("code", cleanCode)
+            .eq("is_active", true)
+            .single();
+        if (promo) {
+            const isExpired = promo.expires_at && new Date(promo.expires_at) < new Date();
+            const limitReached = promo.usage_limit && promo.usage_count >= promo.usage_limit;
+            const belowMin = promo.min_order_value && subtotal < promo.min_order_value;
+            if (!isExpired && !limitReached && !belowMin) {
+                couponDiscount = Math.round((subtotal * promo.discount_percentage) / 100);
+                appliedPromoCode = promo.code;
+            }
+        }
+    }
+    const finalTotal = Math.max(0, subtotal - couponDiscount + shippingFee);
+    return {
+        verifiedItems,
+        subtotal,
+        couponDiscount,
+        shippingFee,
+        finalTotal,
+        appliedPromoCode,
+    };
+}
+// ─── POST /api/checkout/create-order ─────────────────────────────────────────
+// Step 1: Recalculate price server-side & create Razorpay order (SEC-01, SEC-05, SEC-10)
+router.post("/create-order", rateLimit_1.checkoutLimiter, (0, validate_1.validateBody)(validate_1.checkoutCreateOrderSchema), async (req, res) => {
+    try {
+        const { items, promoCode } = req.body;
+        if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+            res.status(503).json({ error: "Payment processor is not configured" });
+            return;
+        }
+        // Server calculates authoritative totals; ignores client subtotal/prices completely
+        const verified = await calculateAuthoritativeTotals(items, promoCode);
+        const razorpayOrder = await razorpay_1.razorpay.orders.create({
+            amount: verified.finalTotal * 100, // in paise
+            currency: "INR",
+            receipt: `akik_${Date.now()}`,
+            notes: {
+                promoCode: verified.appliedPromoCode || "",
+                subtotal: verified.subtotal.toString(),
+                finalTotal: verified.finalTotal.toString(),
+                itemCount: verified.verifiedItems.length.toString(),
+                itemsJson: JSON.stringify(verified.verifiedItems.map((item) => ({
+                    productId: item.productId,
+                    name: item.name,
+                    color: item.selectedColor.name,
+                    size: item.selectedSize,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                }))).slice(0, 490),
+            },
+        });
+        // Provide public keyId to client for checkout modal
+        res.json({
+            razorpayOrderId: razorpayOrder.id,
+            amount: verified.finalTotal * 100,
+            currency: "INR",
+            keyId: process.env.RAZORPAY_KEY_ID,
+            calculated: {
+                subtotal: verified.subtotal,
+                couponDiscount: verified.couponDiscount,
+                shippingFee: verified.shippingFee,
+                finalTotal: verified.finalTotal,
+            },
+        });
+    }
+    catch (err) {
+        console.error("POST /checkout/create-order error:", err);
+        // Classify error source for appropriate status code & user message
+        const razorpayStatusCode = err?.statusCode;
+        const isRazorpayError = typeof razorpayStatusCode === "number";
+        const isGatewayError = razorpayStatusCode >= 500 ||
+            err?.code === "ECONNREFUSED" ||
+            err?.code === "ETIMEDOUT" ||
+            err?.code === "ENOTFOUND";
+        const isAuthError = razorpayStatusCode === 401;
+        let status;
+        let message;
+        if (isAuthError) {
+            status = 502;
+            message = "Payment gateway credentials are invalid. Please contact support.";
+        }
+        else if (isGatewayError) {
+            status = 502;
+            message = "Payment processor temporarily unavailable. Please try again shortly.";
+        }
+        else if (isRazorpayError) {
+            status = 502;
+            const desc = err?.error?.description || "Payment gateway rejected the request";
+            message = process.env.NODE_ENV === "production" ? desc : (err.message || desc);
+        }
+        else {
+            // Application-level errors (product not found, cart empty, etc.)
+            status = 400;
+            message = err.message || "Failed to initiate payment";
+        }
+        res.status(status).json({ error: message });
+    }
+});
+// ─── POST /api/checkout/verify-payment ───────────────────────────────────────
+// Step 2: Verify HMAC signature → recalculate prices → save order to Supabase
+router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.validateBody)(validate_1.checkoutVerifyPaymentSchema), async (req, res) => {
+    try {
+        const { razorpayOrderId, razorpayPaymentId, razorpaySignature, items, customer, promoCode, } = req.body;
+        if (!process.env.RAZORPAY_KEY_SECRET) {
+            res.status(503).json({ error: "Payment processing is not configured" });
+            return;
+        }
+        // ── HMAC Signature Verification (CRIT-20: strictly required) ────────────
+        const generatedSignature = crypto_1.default
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+            .digest("hex");
+        const sigBuffer = Buffer.from(razorpaySignature || "", "utf8");
+        const genBuffer = Buffer.from(generatedSignature, "utf8");
+        if (sigBuffer.length !== genBuffer.length || !crypto_1.default.timingSafeEqual(sigBuffer, genBuffer)) {
+            res.status(400).json({ error: "Payment verification failed — invalid signature" });
+            return;
+        }
+        // ── Idempotency Check (HIGH-21) ──────────────────────────────────────────
+        const { data: existingOrder } = await supabase_1.supabase
+            .from("orders")
+            .select("id, order_number")
+            .eq("razorpay_order_id", razorpayOrderId)
+            .maybeSingle();
+        if (existingOrder) {
+            // Ensure order_items exist in case webhook created parent order first
+            const { data: existingItems } = await supabase_1.supabase
+                .from("order_items")
+                .select("id")
+                .eq("order_id", existingOrder.id)
+                .limit(1);
+            if (!existingItems || existingItems.length === 0) {
+                try {
+                    const verified = await calculateAuthoritativeTotals(items, promoCode);
+                    const orderItems = verified.verifiedItems.map((item) => ({
+                        order_id: existingOrder.id,
+                        product_id: item.productId,
+                        product_name: item.name,
+                        selected_color: item.selectedColor,
+                        selected_size: item.selectedSize,
+                        quantity: item.quantity,
+                        unit_price: item.unitPrice,
+                        line_total: item.lineTotal,
+                    }));
+                    await supabase_1.supabase.from("order_items").insert(orderItems);
+                }
+                catch (itemErr) {
+                    console.warn("Backfilling order items for existing order failed:", itemErr);
+                }
+            }
+            res.json({
+                success: true,
+                orderNumber: existingOrder.order_number,
+                message: "Order already processed successfully.",
+            });
+            return;
+        }
+        // ── Server-side authoritative total recalculation (SEC-01) ───────────────
+        const verified = await calculateAuthoritativeTotals(items, promoCode);
+        // ── Build address string ──────────────────────────────────────────────────
+        const addressParts = [
+            customer.addressLine1,
+            customer.addressLine2,
+            customer.city,
+            customer.state,
+            customer.pinCode,
+        ].filter(Boolean);
+        const fullAddress = addressParts.join(", ");
+        // ── Generate atomic order number (SEC-02) ─────────────────────────────────
+        const orderNumber = await (0, orderNumber_1.getNextOrderNumber)();
+        // ── Save order to Supabase ────────────────────────────────────────────────
+        const { data: order, error: orderError } = await supabase_1.supabase
+            .from("orders")
+            .insert({
+            order_number: orderNumber,
+            customer_name: customer.name,
+            customer_phone: customer.phone,
+            customer_email: customer.email || null,
+            address_line1: customer.addressLine1,
+            address_line2: customer.addressLine2 || null,
+            city: customer.city,
+            state: customer.state,
+            pin_code: customer.pinCode,
+            delivery_notes: customer.deliveryNotes || null,
+            subtotal: verified.subtotal,
+            coupon_discount: verified.couponDiscount,
+            shipping_fee: verified.shippingFee,
+            final_total: verified.finalTotal,
+            promo_code: verified.appliedPromoCode || null,
+            payment_method: "razorpay",
+            razorpay_order_id: razorpayOrderId,
+            razorpay_payment_id: razorpayPaymentId,
+            payment_status: "paid",
+            status: "confirmed",
+        })
+            .select()
+            .single();
+        if (orderError)
+            throw orderError;
+        // ── Save order items with verified unit prices ────────────────────────────
+        const orderItems = verified.verifiedItems.map((item) => ({
+            order_id: order.id,
+            product_id: item.productId,
+            product_name: item.name,
+            selected_color: item.selectedColor,
+            selected_size: item.selectedSize,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            line_total: item.lineTotal,
+        }));
+        const { error: itemsError } = await supabase_1.supabase
+            .from("order_items")
+            .insert(orderItems);
+        if (itemsError) {
+            // Compensating transaction: purge the parent order to prevent orphaned records
+            console.error("Order items insert failed, rolling back order record:", itemsError);
+            await supabase_1.supabase.from("orders").delete().eq("id", order.id);
+            throw itemsError;
+        }
+        // ── Atomic Promo increment (SEC-09) ───────────────────────────────────────
+        if (verified.appliedPromoCode) {
+            try {
+                const { error: rpcErr } = await supabase_1.supabase.rpc("apply_promo_atomic", {
+                    p_code: verified.appliedPromoCode,
+                    p_subtotal: verified.subtotal,
+                });
+                if (rpcErr) {
+                    await supabase_1.supabase.rpc("increment_promo_usage", {
+                        promo_code: verified.appliedPromoCode,
+                    });
+                }
+            }
+            catch {
+                await supabase_1.supabase.rpc("increment_promo_usage", {
+                    promo_code: verified.appliedPromoCode,
+                });
+            }
+        }
+        // Mark WhatsApp as notified internally
+        await supabase_1.supabase
+            .from("orders")
+            .update({ whatsapp_notified: true })
+            .eq("id", order.id);
+        // Build customer WA confirmation URL (sent TO the customer's own phone)
+        const customerWhatsAppUrl = (0, whatsapp_1.buildCustomerWhatsAppMessage)({
+            orderNumber,
+            customerName: customer.name,
+            customerPhone: customer.phone,
+            address: fullAddress,
+            items: verified.verifiedItems.map((item) => ({
+                name: item.name,
+                selectedSize: item.selectedSize,
+                selectedColor: item.selectedColor.name,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+            })),
+            finalTotal: verified.finalTotal,
+            shippingFee: verified.shippingFee,
+            promoCode: verified.appliedPromoCode,
+            couponDiscount: verified.couponDiscount || 0,
+        });
+        res.json({
+            success: true,
+            orderNumber,
+            customerWhatsAppUrl,
+            message: "Payment verified and order placed successfully!",
+        });
+    }
+    catch (err) {
+        console.error("POST /checkout/verify-payment error:", err);
+        const message = process.env.NODE_ENV === "production"
+            ? "Failed to save order after payment"
+            : err.message || "Failed to save order after payment";
+        res.status(500).json({ error: message });
+    }
+});
+// ─── POST /api/checkout/webhook ──────────────────────────────────────────────
+// Asynchronous payment webhook listener from Razorpay (SEC-04)
+router.post("/webhook", async (req, res) => {
+    try {
+        const webhookSignature = req.headers["x-razorpay-signature"];
+        const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+        // CRIT-19: Strictly reject webhook if webhook secret is not configured
+        if (!webhookSecret) {
+            console.error("RAZORPAY_WEBHOOK_SECRET not configured — rejecting webhook");
+            res.status(503).json({ error: "Webhook processing unavailable" });
+            return;
+        }
+        if (!webhookSignature) {
+            res.status(400).json({ error: "Missing x-razorpay-signature header" });
+            return;
+        }
+        const rawBody = req.rawBody
+            ? req.rawBody.toString("utf8")
+            : JSON.stringify(req.body);
+        const expectedSignature = crypto_1.default
+            .createHmac("sha256", webhookSecret)
+            .update(rawBody)
+            .digest("hex");
+        const hookSigBuffer = Buffer.from(webhookSignature || "", "utf8");
+        const expectedSigBuffer = Buffer.from(expectedSignature, "utf8");
+        if (hookSigBuffer.length !== expectedSigBuffer.length || !crypto_1.default.timingSafeEqual(hookSigBuffer, expectedSigBuffer)) {
+            res.status(400).json({ error: "Invalid webhook signature" });
+            return;
+        }
+        const event = req.body.event;
+        const payload = req.body.payload;
+        if (event === "payment.captured" || event === "order.paid") {
+            const paymentEntity = payload?.payment?.entity;
+            const razorpayOrderId = paymentEntity?.order_id;
+            const razorpayPaymentId = paymentEntity?.id;
+            if (razorpayOrderId) {
+                // Idempotently check if order exists in Supabase
+                const { data: existingOrder } = await supabase_1.supabase
+                    .from("orders")
+                    .select("id, payment_status, razorpay_payment_id")
+                    .eq("razorpay_order_id", razorpayOrderId)
+                    .single();
+                if (existingOrder) {
+                    if (existingOrder.payment_status !== "paid") {
+                        await supabase_1.supabase
+                            .from("orders")
+                            .update({
+                            payment_status: "paid",
+                            status: "confirmed",
+                            razorpay_payment_id: razorpayPaymentId || existingOrder.razorpay_payment_id,
+                            updated_at: new Date().toISOString(),
+                        })
+                            .eq("id", existingOrder.id);
+                    }
+                }
+                else {
+                    // Webhook arrived before client browser callback completed
+                    const orderNumber = await (0, orderNumber_1.getNextOrderNumber)();
+                    const amountPaid = paymentEntity?.amount ? paymentEntity.amount / 100 : 0;
+                    const notes = paymentEntity?.notes || {};
+                    const { data: newOrder } = await supabase_1.supabase
+                        .from("orders")
+                        .insert({
+                        order_number: orderNumber,
+                        customer_name: paymentEntity?.email ? paymentEntity.email.split("@")[0] : "Customer",
+                        customer_phone: paymentEntity?.contact || "N/A",
+                        customer_email: paymentEntity?.email,
+                        address_line1: notes.address || "Captured via Razorpay Webhook",
+                        city: notes.city || "Unknown",
+                        state: notes.state || "Unknown",
+                        pin_code: notes.pinCode || "000000",
+                        subtotal: amountPaid,
+                        coupon_discount: 0,
+                        shipping_fee: 0,
+                        final_total: amountPaid,
+                        promo_code: notes.promoCode || null,
+                        payment_method: "razorpay",
+                        razorpay_order_id: razorpayOrderId,
+                        razorpay_payment_id: razorpayPaymentId,
+                        payment_status: "paid",
+                        status: "confirmed",
+                        notes: "Order recorded via Razorpay webhook (browser redirect skipped).",
+                    })
+                        .select()
+                        .single();
+                    if (newOrder && notes.itemsJson) {
+                        try {
+                            const parsedItems = JSON.parse(notes.itemsJson);
+                            if (Array.isArray(parsedItems) && parsedItems.length > 0) {
+                                const orderItemsToInsert = parsedItems.map((pi) => ({
+                                    order_id: newOrder.id,
+                                    product_id: pi.productId || null,
+                                    product_name: pi.name || "Boutique Ensemble",
+                                    selected_color: { name: pi.color || "Default", hexCode: "#C47D5A", imageSrc: "" },
+                                    selected_size: pi.size || "M",
+                                    quantity: pi.quantity || 1,
+                                    unit_price: pi.unitPrice || amountPaid,
+                                    line_total: (pi.unitPrice || amountPaid) * (pi.quantity || 1),
+                                }));
+                                await supabase_1.supabase.from("order_items").insert(orderItemsToInsert);
+                            }
+                        }
+                        catch (itemErr) {
+                            console.error("Webhook items parsing error:", itemErr);
+                        }
+                    }
+                }
+            }
+        }
+        res.json({ status: "ok" });
+    }
+    catch (err) {
+        console.error("Razorpay webhook error:", err);
+        res.status(500).json({ error: "Webhook processing failed" });
+    }
+});
+// ─── GET /api/checkout/track ──────────────────────────────────────────────────
+// Public guest order tracking endpoint (No account or password needed)
+router.get("/track", rateLimit_1.checkoutLimiter, async (req, res) => {
+    try {
+        const { orderNumber, phone } = req.query;
+        if (!orderNumber || typeof orderNumber !== "string") {
+            res.status(400).json({ error: "Order number is required" });
+            return;
+        }
+        if (!phone || typeof phone !== "string") {
+            res.status(400).json({ error: "Mobile number is required" });
+            return;
+        }
+        const cleanOrderNumber = orderNumber.trim().toUpperCase();
+        const cleanPhone = phone.replace(/[^0-9]/g, "").slice(-10);
+        if (cleanPhone.length < 10) {
+            res.status(400).json({ error: "Please enter a valid 10-digit mobile number" });
+            return;
+        }
+        const { data: order, error } = await supabase_1.supabase
+            .from("orders")
+            .select("id, order_number, customer_name, customer_phone, customer_email, address_line1, address_line2, city, state, pin_code, promo_code, subtotal, coupon_discount, shipping_fee, final_total, status, payment_status, created_at, updated_at, order_items(id, product_name, selected_color, selected_size, quantity, unit_price, line_total)")
+            .eq("order_number", cleanOrderNumber)
+            .ilike("customer_phone", `%${cleanPhone}%`)
+            .maybeSingle();
+        if (error || !order) {
+            res.status(404).json({
+                error: "No order found matching this order number and mobile number. Please verify your details."
+            });
+            return;
+        }
+        // Mask phone for privacy in public response: ••••••1234
+        const maskedPhone = order.customer_phone.replace(/\d(?=\d{4})/g, "•");
+        res.json({
+            success: true,
+            order: {
+                orderNumber: order.order_number,
+                customerName: order.customer_name,
+                customerPhoneMasked: maskedPhone,
+                customerEmail: order.customer_email || "",
+                addressLine1: order.address_line1 || "",
+                addressLine2: order.address_line2 || "",
+                city: order.city || "",
+                state: order.state || "",
+                pinCode: order.pin_code || "",
+                subtotal: order.subtotal,
+                promoCode: order.promo_code || null,
+                couponDiscount: order.coupon_discount || 0,
+                shippingFee: order.shipping_fee || 0,
+                finalTotal: order.final_total,
+                status: order.status,
+                paymentStatus: order.payment_status,
+                createdAt: order.created_at,
+                updatedAt: order.updated_at,
+                items: (order.order_items || []).map((item) => ({
+                    name: item.product_name,
+                    color: item.selected_color?.name || "Default",
+                    image: item.selected_color?.imageSrc || "",
+                    size: item.selected_size,
+                    quantity: item.quantity,
+                    unitPrice: item.unit_price,
+                    lineTotal: item.line_total,
+                })),
+            },
+        });
+    }
+    catch (err) {
+        console.error("GET /checkout/track error:", err);
+        res.status(500).json({ error: "Failed to retrieve order tracking details" });
+    }
+});
+exports.default = router;
