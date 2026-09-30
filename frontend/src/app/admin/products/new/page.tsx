@@ -260,7 +260,7 @@ export default function AdminNewProductPage() {
             </button>
           </div>
           <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
-          <p className="text-xs text-[#A8A49F]">First image will be the primary display image. Max 10 images, 10MB each.</p>
+          <p className="text-xs text-[#A8A49F]">First image will be the primary display image. Up to 25 images, 10MB each.</p>
         </div>
 
         {/* Sizes */}

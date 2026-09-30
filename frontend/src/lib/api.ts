@@ -437,7 +437,10 @@ export const adminApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
     });
-    if (!res.ok) throw new Error("Image upload failed");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Image upload failed" }));
+      throw new Error(err.error || "Image upload failed");
+    }
     memoryCache.invalidate(`admin:product:${productId}`);
     memoryCache.invalidate("public:product");
     return res.json();

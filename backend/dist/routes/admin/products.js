@@ -33,18 +33,31 @@ router.get("/", async (_req, res) => {
 // ─── POST /api/admin/products ────────────────────────────────────────────────
 // Create a new product (without images — images uploaded separately)
 router.post("/", (0, validate_1.validateBody)(validate_1.adminProductCreateSchema), async (req, res) => {
+    const body = req.body;
+    const slug = body.slug || (0, slugify_1.slugify)(body.name);
     try {
-        const body = req.body;
-        const slug = body.slug || (0, slugify_1.slugify)(body.name);
         // Check slug uniqueness
-        const { data: existing } = await supabase_1.supabase
+        const { data: existingSlug } = await supabase_1.supabase
             .from("products")
             .select("id")
             .eq("slug", slug)
-            .single();
-        if (existing) {
+            .maybeSingle();
+        if (existingSlug) {
             res.status(400).json({ error: `A product with slug "${slug}" already exists` });
             return;
+        }
+        // Check SKU uniqueness
+        if (body.sku && typeof body.sku === "string" && body.sku.trim()) {
+            const cleanSku = body.sku.trim();
+            const { data: existingSku } = await supabase_1.supabase
+                .from("products")
+                .select("id")
+                .eq("sku", cleanSku)
+                .maybeSingle();
+            if (existingSku) {
+                res.status(400).json({ error: `A product with SKU "${cleanSku}" already exists. Please use a unique SKU.` });
+                return;
+            }
         }
         const { data: product, error } = await supabase_1.supabase
             .from("products")
@@ -62,7 +75,7 @@ router.post("/", (0, validate_1.validateBody)(validate_1.adminProductCreateSchem
             primary_image: body.primaryImage || "",
             secondary_image: body.secondaryImage || "",
             gallery_images: body.galleryImages || [],
-            sku: body.sku || `AKIK-${Date.now()}`,
+            sku: body.sku ? body.sku.trim() : `AKIK-${Date.now()}`,
             rating: body.rating || 5.0,
             review_count: body.reviewCount || 0,
             description: body.description || "",
@@ -82,7 +95,11 @@ router.post("/", (0, validate_1.validateBody)(validate_1.adminProductCreateSchem
     }
     catch (err) {
         console.error("Admin POST /products error:", err);
-        res.status(500).json({ error: "Failed to create product" });
+        const isSkuConflict = err?.message?.includes("products_sku_key") || err?.code === "23505";
+        const errorMsg = isSkuConflict
+            ? `A product with SKU "${body.sku}" already exists. Please use a unique SKU.`
+            : err?.message || "Failed to create product";
+        res.status(400).json({ error: errorMsg });
     }
 });
 // ─── GET /api/admin/products/:id ─────────────────────────────────────────────
@@ -109,9 +126,22 @@ router.get("/:id", (0, validate_1.validateUuidParam)("id"), async (req, res) => 
 // ─── PUT /api/admin/products/:id ─────────────────────────────────────────────
 // Update a product's details
 router.put("/:id", (0, validate_1.validateUuidParam)("id"), (0, validate_1.validateBody)(validate_1.adminProductUpdateSchema), async (req, res) => {
+    const { id } = req.params;
+    const body = req.body;
     try {
-        const { id } = req.params;
-        const body = req.body;
+        if (body.sku && typeof body.sku === "string" && body.sku.trim()) {
+            const cleanSku = body.sku.trim();
+            const { data: existingSku } = await supabase_1.supabase
+                .from("products")
+                .select("id")
+                .eq("sku", cleanSku)
+                .neq("id", id)
+                .maybeSingle();
+            if (existingSku) {
+                res.status(400).json({ error: `Another product with SKU "${cleanSku}" already exists. Please use a unique SKU.` });
+                return;
+            }
+        }
         const updateData = { updated_at: new Date().toISOString() };
         // Only update fields that were sent
         const fieldMap = {
@@ -157,7 +187,11 @@ router.put("/:id", (0, validate_1.validateUuidParam)("id"), (0, validate_1.valid
     }
     catch (err) {
         console.error("Admin PUT /products/:id error:", err);
-        res.status(500).json({ error: "Failed to update product" });
+        const isSkuConflict = err?.message?.includes("products_sku_key") || err?.code === "23505";
+        const errorMsg = isSkuConflict
+            ? `A product with SKU "${body.sku}" already exists. Please use a unique SKU.`
+            : err?.message || "Failed to update product";
+        res.status(400).json({ error: errorMsg });
     }
 });
 // ─── DELETE /api/admin/products/:id ──────────────────────────────────────────
@@ -202,7 +236,7 @@ router.patch("/:id/stock", (0, validate_1.validateUuidParam)("id"), async (req, 
 });
 // ─── POST /api/admin/products/:id/images ─────────────────────────────────────
 // Upload product images to Supabase Storage
-router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upload.array("images", 10), async (req, res) => {
+router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upload.array("images", 25), async (req, res) => {
     try {
         const { id } = req.params;
         const files = req.files;
@@ -218,10 +252,11 @@ router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upl
                 res.status(400).json({ error: `Invalid image file extension ".${fileExt}". Allowed: ${allowedExts.join(", ")}` });
                 return;
             }
-            // Compress and resize image to WebP (max 1200px, 80% quality)
+            // Compress & resize image to WebP (auto-orient EXIF, max 1000px, quality 75, effort 6)
             const compressedBuffer = await (0, sharp_1.default)(file.buffer)
-                .resize({ width: 1200, withoutEnlargement: true })
-                .webp({ quality: 80, effort: 4 })
+                .rotate()
+                .resize({ width: 1000, withoutEnlargement: true, fit: "inside" })
+                .webp({ quality: 75, effort: 6 })
                 .toBuffer();
             const fileName = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
             const { error: uploadError } = await supabase_1.supabase.storage

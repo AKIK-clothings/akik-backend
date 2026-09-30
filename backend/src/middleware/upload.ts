@@ -1,11 +1,11 @@
 import multer from "multer";
 
-// Store files in memory — we'll upload directly to Supabase Storage from buffer
+// Store files in memory — upload directly to Supabase Storage from buffer
 export const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 4 * 1024 * 1024, // 4MB max per file
-    files: 5, // max 5 files per request
+    fileSize: 10 * 1024 * 1024, // 10MB max per file
+    files: 25, // max 25 files per request for multi-variant products
   },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];

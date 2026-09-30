@@ -29,6 +29,7 @@ const CraftProcessShowcase = dynamic(
 export default function HomePage() {
   const [bestsellers, setBestsellers] = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
+  const [videoReady, setVideoReady] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -56,31 +57,48 @@ export default function HomePage() {
       {/* 1. Cinematic Hero Section with Brand Background Video (Model Face Completely Visible) */}
       <section className="relative -mt-[52px] pt-[52px] h-[95vh] min-h-[660px] w-full overflow-hidden flex flex-col justify-end items-center text-center pb-12 sm:pb-16 md:pb-20">
         {/*
-          Responsive background video:
-          - Mobile uses the dedicated Cloudinary portrait video.
-          - Desktop keeps the existing windows_background.mp4 file.
-          - Desktop object positioning moves the model slightly to the right.
+          Hero media:
+          - The fallback image is shown immediately while the video loads.
+          - Mobile uses /public/mobile_background.mp4.
+          - Desktop/laptop uses /public/windows_background.mp4.
+          - Video stays hidden until the browser can display it.
         */}
+
+        {/* Fallback image shown while the video is loading */}
+        <Image
+          src="/home_background.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="absolute inset-0 z-0 h-full w-full object-cover object-[50%_8%] md:object-[35%_8%]"
+          aria-hidden="true"
+        />
+
+        {/* Background video */}
         <video
           autoPlay
           loop
           muted
           playsInline
           preload="auto"
-          className="absolute inset-0 z-0 h-full w-full object-cover object-[50%_8%] md:object-[35%_8%]"
+          onCanPlay={() => setVideoReady(true)}
+          className={`absolute inset-0 z-[1] h-full w-full object-cover object-[50%_8%] md:object-[35%_8%] transition-opacity duration-300 ${
+            videoReady ? "opacity-100" : "opacity-0"
+          }`}
           aria-label="AKIK artisanal clothing collection background video"
         >
           {/* Mobile video */}
           <source
             media="(max-width: 767px)"
-            src="https://res.cloudinary.com/suxqbbxr/video/upload/v1789927778/mobile_background.mp4"
+            src="/mobile_background.mp4"
             type="video/mp4"
           />
 
           {/* Desktop and laptop video */}
           <source
             media="(min-width: 768px)"
-            src="https://res.cloudinary.com/suxqbbxr/video/upload/v1789927767/windows_background.mp4"
+            src="/windows_background.mp4"
             type="video/mp4"
           />
 

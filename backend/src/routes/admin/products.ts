@@ -39,60 +39,79 @@ router.post(
   "/",
   validateBody(adminProductCreateSchema),
   async (req: Request, res: Response): Promise<void> => {
+    const body = req.body;
+    const slug = body.slug || slugify(body.name);
     try {
-      const body = req.body;
-      const slug = body.slug || slugify(body.name);
-
       // Check slug uniqueness
-      const { data: existing } = await supabase
+      const { data: existingSlug } = await supabase
         .from("products")
         .select("id")
         .eq("slug", slug)
-        .single();
+        .maybeSingle();
 
-      if (existing) {
+      if (existingSlug) {
         res.status(400).json({ error: `A product with slug "${slug}" already exists` });
         return;
       }
 
-    const { data: product, error } = await supabase
-      .from("products")
-      .insert({
-        slug,
-        name: body.name,
-        category: body.category,
-        subcategory: body.subcategory,
-        regular_price: body.regularPrice || body.discountedPrice,
-        discounted_price: body.discountedPrice,
-        is_sold_out: body.isSoldOut || false,
-        sizes: body.sizes || [],
-        size_stock_map: body.sizeStockMap || {},
-        color_variants: body.colorVariants || [],
-        primary_image: body.primaryImage || "",
-        secondary_image: body.secondaryImage || "",
-        gallery_images: body.galleryImages || [],
-        sku: body.sku || `AKIK-${Date.now()}`,
-        rating: body.rating || 5.0,
-        review_count: body.reviewCount || 0,
-        description: body.description || "",
-        fabric_details: body.fabricDetails || "",
-        dimensions: body.dimensions,
-        is_new_arrival: body.isNewArrival || false,
-        is_best_seller: body.isBestSeller || false,
-        is_featured: body.isFeatured || false,
-        accordions: body.accordions || {},
-        is_active: body.isActive !== undefined ? body.isActive : true,
-      })
-      .select()
-      .single();
+      // Check SKU uniqueness
+      if (body.sku && typeof body.sku === "string" && body.sku.trim()) {
+        const cleanSku = body.sku.trim();
+        const { data: existingSku } = await supabase
+          .from("products")
+          .select("id")
+          .eq("sku", cleanSku)
+          .maybeSingle();
 
-    if (error) throw error;
-    res.status(201).json({ product });
-  } catch (err) {
-    console.error("Admin POST /products error:", err);
-    res.status(500).json({ error: "Failed to create product" });
+        if (existingSku) {
+          res.status(400).json({ error: `A product with SKU "${cleanSku}" already exists. Please use a unique SKU.` });
+          return;
+        }
+      }
+
+      const { data: product, error } = await supabase
+        .from("products")
+        .insert({
+          slug,
+          name: body.name,
+          category: body.category,
+          subcategory: body.subcategory,
+          regular_price: body.regularPrice || body.discountedPrice,
+          discounted_price: body.discountedPrice,
+          is_sold_out: body.isSoldOut || false,
+          sizes: body.sizes || [],
+          size_stock_map: body.sizeStockMap || {},
+          color_variants: body.colorVariants || [],
+          primary_image: body.primaryImage || "",
+          secondary_image: body.secondaryImage || "",
+          gallery_images: body.galleryImages || [],
+          sku: body.sku ? body.sku.trim() : `AKIK-${Date.now()}`,
+          rating: body.rating || 5.0,
+          review_count: body.reviewCount || 0,
+          description: body.description || "",
+          fabric_details: body.fabricDetails || "",
+          dimensions: body.dimensions,
+          is_new_arrival: body.isNewArrival || false,
+          is_best_seller: body.isBestSeller || false,
+          is_featured: body.isFeatured || false,
+          accordions: body.accordions || {},
+          is_active: body.isActive !== undefined ? body.isActive : true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.status(201).json({ product });
+    } catch (err: any) {
+      console.error("Admin POST /products error:", err);
+      const isSkuConflict = err?.message?.includes("products_sku_key") || err?.code === "23505";
+      const errorMsg = isSkuConflict
+        ? `A product with SKU "${body.sku}" already exists. Please use a unique SKU.`
+        : err?.message || "Failed to create product";
+      res.status(400).json({ error: errorMsg });
+    }
   }
-});
+);
 
 // ─── GET /api/admin/products/:id ─────────────────────────────────────────────
 // Get single product for editing
@@ -125,9 +144,23 @@ router.put(
   validateUuidParam("id"),
   validateBody(adminProductUpdateSchema),
   async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const body = req.body;
     try {
-      const { id } = req.params;
-      const body = req.body;
+      if (body.sku && typeof body.sku === "string" && body.sku.trim()) {
+        const cleanSku = body.sku.trim();
+        const { data: existingSku } = await supabase
+          .from("products")
+          .select("id")
+          .eq("sku", cleanSku)
+          .neq("id", id)
+          .maybeSingle();
+
+        if (existingSku) {
+          res.status(400).json({ error: `Another product with SKU "${cleanSku}" already exists. Please use a unique SKU.` });
+          return;
+        }
+      }
 
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
@@ -174,9 +207,13 @@ router.put(
 
       if (error) throw error;
       res.json({ product });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Admin PUT /products/:id error:", err);
-      res.status(500).json({ error: "Failed to update product" });
+      const isSkuConflict = err?.message?.includes("products_sku_key") || err?.code === "23505";
+      const errorMsg = isSkuConflict
+        ? `A product with SKU "${body.sku}" already exists. Please use a unique SKU.`
+        : err?.message || "Failed to update product";
+      res.status(400).json({ error: errorMsg });
     }
   }
 );
@@ -228,7 +265,7 @@ router.patch("/:id/stock", validateUuidParam("id"), async (req: Request, res: Re
 router.post(
   "/:id/images",
   validateUuidParam("id"),
-  upload.array("images", 10),
+  upload.array("images", 25),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
@@ -249,10 +286,11 @@ router.post(
           return;
         }
 
-        // Compress and resize image to WebP (max 1200px, 80% quality)
+        // Compress & resize image to WebP (auto-orient EXIF, max 1000px, quality 75, effort 6)
         const compressedBuffer = await sharp(file.buffer)
-          .resize({ width: 1200, withoutEnlargement: true })
-          .webp({ quality: 80, effort: 4 })
+          .rotate()
+          .resize({ width: 1000, withoutEnlargement: true, fit: "inside" })
+          .webp({ quality: 75, effort: 6 })
           .toBuffer();
 
         const fileName = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
