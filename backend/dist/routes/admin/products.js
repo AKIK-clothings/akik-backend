@@ -9,6 +9,8 @@ const auth_1 = require("../../middleware/auth");
 const upload_1 = require("../../middleware/upload");
 const slugify_1 = require("../../utils/slugify");
 const sharp_1 = __importDefault(require("sharp"));
+const client_s3_1 = require("@aws-sdk/client-s3");
+const r2_1 = require("../../config/r2");
 const validate_1 = require("../../middleware/validate");
 const router = (0, express_1.Router)();
 // All routes in this file require admin authentication
@@ -258,20 +260,16 @@ router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upl
                 .resize({ width: 1000, withoutEnlargement: true, fit: "inside" })
                 .webp({ quality: 75, effort: 6 })
                 .toBuffer();
-            const fileName = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
-            const { error: uploadError } = await supabase_1.supabase.storage
-                .from("product-images")
-                .upload(fileName, compressedBuffer, {
-                contentType: "image/webp",
-                cacheControl: "31536000, public, immutable",
-                upsert: false,
-            });
-            if (uploadError)
-                throw uploadError;
-            const { data: urlData } = supabase_1.supabase.storage
-                .from("product-images")
-                .getPublicUrl(fileName);
-            uploadedUrls.push(urlData.publicUrl);
+            const key = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
+            // Upload compressed image to Cloudflare R2
+            await r2_1.r2Client.send(new client_s3_1.PutObjectCommand({
+                Bucket: r2_1.R2_BUCKET,
+                Key: key,
+                Body: compressedBuffer,
+                ContentType: "image/webp",
+                CacheControl: "public, max-age=31536000, immutable",
+            }));
+            uploadedUrls.push((0, r2_1.getR2PublicUrl)(key));
         }
         res.json({
             success: true,

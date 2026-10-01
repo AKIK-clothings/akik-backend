@@ -48,7 +48,7 @@ export interface Product {
   discountedPrice: number;
   isSoldOut: boolean;
   sizes: ApparelSize[];
-  sizeStockMap?: Partial<Record<ApparelSize, boolean>>;
+  sizeStockMap?: Partial<Record<ApparelSize | string, boolean | number>>;
   colorVariants: ColorVariant[];
   primaryImage: string;
   secondaryImage: string;

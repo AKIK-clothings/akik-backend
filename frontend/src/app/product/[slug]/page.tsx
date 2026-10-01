@@ -97,7 +97,6 @@ export default function ProductDetailPage() {
   // Accordion active state
   const [expandedAccordions, setExpandedAccordions] = useState<Record<string, boolean>>({
     fabricCare: true,
-    makingProcess: true,
     stitchingDetails: false,
     shippingReturns: false,
   });
@@ -129,10 +128,34 @@ export default function ProductDetailPage() {
   const isUnstitched =
     product?.category === "unstitched" || !product?.sizes || product.sizes.length === 0;
 
-  // Check if current selected size is out of stock
-  const isSizeOutOfStock =
-    product?.isSoldOut ||
-    (!isUnstitched && selectedSize && product?.sizeStockMap?.[selectedSize] === false);
+  // Check stock for current product or selected size
+  const getSelectedStock = (): { isOutOfStock: boolean; quantity: number | null } => {
+    if (!product || product.isSoldOut) return { isOutOfStock: true, quantity: 0 };
+    const sm = product.sizeStockMap as Record<string, boolean | number> | undefined;
+
+    if (isUnstitched) {
+      if (typeof sm?.total === "number") {
+        return { isOutOfStock: sm.total <= 0, quantity: sm.total };
+      }
+      return { isOutOfStock: false, quantity: null };
+    }
+
+    if (selectedSize && sm) {
+      const val = sm[selectedSize];
+      if (typeof val === "number") {
+        return { isOutOfStock: val <= 0, quantity: val };
+      }
+      if (val === false) {
+        return { isOutOfStock: true, quantity: 0 };
+      }
+    }
+
+    return { isOutOfStock: false, quantity: null };
+  };
+
+  const currentStock = getSelectedStock();
+  const isSizeOutOfStock = currentStock.isOutOfStock;
+  const isOnlyOneLeft = currentStock.quantity === 1;
 
   const effectiveSize = isUnstitched ? "Unstitched" : selectedSize;
 
@@ -355,8 +378,12 @@ export default function ProductDetailPage() {
                 {/* Size Chips */}
                 <div className="grid grid-cols-6 gap-2">
                   {product.sizes.map((sz) => {
+                    const sm = product.sizeStockMap as Record<string, boolean | number> | undefined;
+                    const val = sm?.[sz];
                     const isOutOfStock =
-                      product.isSoldOut || product.sizeStockMap?.[sz] === false;
+                      product.isSoldOut ||
+                      val === false ||
+                      (typeof val === "number" && val <= 0);
                     const isSelected = selectedSize === sz;
 
                     return (
@@ -433,9 +460,24 @@ export default function ProductDetailPage() {
                     Complete 3-piece fabric cut • No sizing required • Ready for custom tailoring
                   </span>
                 </div>
-                <span className="px-2.5 py-1 bg-white border border-[#EAE5DE] text-[10px] font-bold uppercase tracking-wider text-[#C47D5A] rounded shadow-sm">
-                  Free Size Cut
-                </span>
+                <div className="flex items-center gap-2">
+                  {isOnlyOneLeft && (
+                    <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 text-[10px] font-bold uppercase tracking-wider text-amber-900 rounded shadow-sm">
+                      Only 1 quantity
+                    </span>
+                  )}
+                  <span className="px-2.5 py-1 bg-white border border-[#EAE5DE] text-[10px] font-bold uppercase tracking-wider text-[#C47D5A] rounded shadow-sm">
+                    Free Size Cut
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Low Stock Alert: Visible ONLY when stock is 1 */}
+            {isOnlyOneLeft && !isSizeOutOfStock && (
+              <div className="flex items-center gap-2.5 p-3 rounded-lg bg-amber-50/90 border border-amber-200 text-amber-900 text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse shrink-0" />
+                <span>Only 1 quantity available — order soon!</span>
               </div>
             )}
 
@@ -559,50 +601,7 @@ export default function ProductDetailPage() {
                 </AnimatePresence>
               </div>
 
-              {/* Tab: Behind The Making Process Video */}
-              <div className="py-3">
-                <button
-                  type="button"
-                  onClick={() => toggleAccordion("makingProcess")}
-                  className="flex items-center justify-between w-full text-left font-serif text-base text-[#1F1E1D] hover:text-[#C47D5A]"
-                >
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#C47D5A]" />
-                    <span>Behind The Making (Cloth Making Reel)</span>
-                  </span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-[#75706B] transition-transform duration-200 ${
-                      expandedAccordions.makingProcess ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                <AnimatePresence>
-                  {expandedAccordions.makingProcess && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="text-xs text-[#75706B] mt-3 leading-relaxed space-y-2"
-                    >
-                      <div className="relative aspect-[9/16] sm:aspect-video max-h-72 w-full rounded-lg overflow-hidden bg-black shadow-md border border-[#EAE5DE]">
-                        <video
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          controls
-                          className="w-full h-full object-cover"
-                        >
-                          <source src="/videos/cloth_making_process.mp4" type="video/mp4" />
-                        </video>
-                      </div>
-                      <p className="text-[11px] text-[#75706B]">
-                        Authentic workshop footage: Watch master artisans hand-embroider intricate metallic zari and tailor the fabrics for AKIK luxury ensembles.
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+
 
               {/* Tab 2: Product Details & Stitching */}
               <div className="py-3">

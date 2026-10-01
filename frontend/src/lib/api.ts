@@ -25,7 +25,7 @@ export interface ApiProduct {
   discounted_price: number;
   is_sold_out: boolean;
   sizes: string[];
-  size_stock_map: Record<string, boolean>;
+  size_stock_map: Record<string, boolean | number>;
   color_variants: Array<{
     name: string;
     hexCode: string;

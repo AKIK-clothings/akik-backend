@@ -151,9 +151,51 @@ export default function AdminProductsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${product.is_sold_out ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
-                        {product.is_sold_out ? "Sold Out" : "In Stock"}
-                      </span>
+                      {(() => {
+                        const sm = (product.size_stock_map || {}) as Record<string, boolean | number>;
+                        let isSoldOut = Boolean(product.is_sold_out);
+                        let totalCount = 0;
+                        let sizeDetails = "";
+
+                        if (typeof sm.total === "number") {
+                          totalCount = sm.total;
+                          isSoldOut = isSoldOut || totalCount <= 0;
+                        } else if (product.sizes && product.sizes.length > 0) {
+                          const parts: string[] = [];
+                          product.sizes.forEach((s) => {
+                            const v = sm[s];
+                            const cnt = typeof v === "number" ? v : v === false ? 0 : 1;
+                            totalCount += cnt;
+                            parts.push(`${s}:${cnt}`);
+                          });
+                          sizeDetails = parts.join(" ");
+                          isSoldOut = isSoldOut || totalCount <= 0;
+                        } else {
+                          totalCount = isSoldOut ? 0 : 1;
+                        }
+
+                        return (
+                          <div className="flex flex-col">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium w-fit ${
+                                isSoldOut
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-green-100 text-green-700"
+                              }`}
+                            >
+                              {isSoldOut ? "Sold Out" : `In Stock (${totalCount})`}
+                            </span>
+                            {sizeDetails && !isSoldOut && (
+                              <span
+                                className="text-[10px] text-[#A8A49F] mt-0.5 truncate max-w-[140px]"
+                                title={sizeDetails}
+                              >
+                                {sizeDetails}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => handleToggleActive(product)} title={product.is_active ? "Click to deactivate" : "Click to activate"}

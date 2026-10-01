@@ -46,9 +46,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     e.stopPropagation();
 
     // Check if out of stock
+    const sm = product.sizeStockMap as Record<string, boolean | number> | undefined;
+    const val = sm?.[size];
     const isOutOfStock =
       product.isSoldOut ||
-      (product.sizes.length > 0 && product.sizeStockMap?.[size] === false);
+      (product.sizes.length > 0 &&
+        (val === false || (typeof val === "number" && val <= 0)));
     if (isOutOfStock) return;
 
     // Trigger cart addition
@@ -58,6 +61,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     setAddedSizeFeedback(size);
     setTimeout(() => setAddedSizeFeedback(null), 1200);
   };
+
+  const isOnlyOneLeft = (() => {
+    if (product.isSoldOut) return false;
+    const sm = product.sizeStockMap as Record<string, boolean | number> | undefined;
+    if (!sm) return false;
+    if (typeof sm.total === "number") return sm.total === 1;
+    if (product.sizes && product.sizes.length > 0) {
+      let sum = 0;
+      let hasNumbers = false;
+      for (const s of product.sizes) {
+        const v = sm[s];
+        if (typeof v === "number") {
+          sum += v;
+          hasNumbers = true;
+        }
+      }
+      return hasNumbers && sum === 1;
+    }
+    return false;
+  })();
 
   const handleColorChange = (e: React.MouseEvent, color: ColorVariant) => {
     e.preventDefault();
@@ -112,14 +135,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </Link>
 
-        {/* Badges: Top-Left Discount Badge */}
-        {discountPercentage > 0 && !product.isSoldOut && (
-          <div className="absolute top-2.5 left-2.5 z-20 pointer-events-none">
+        {/* Badges: Top-Left Badges */}
+        <div className="absolute top-2.5 left-2.5 z-20 pointer-events-none flex flex-col gap-1 items-start">
+          {discountPercentage > 0 && !product.isSoldOut && (
             <span className="inline-flex items-center bg-[#C47D5A] text-white text-[10px] sm:text-[11px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full shadow-md">
               {discountPercentage}% OFF
             </span>
-          </div>
-        )}
+          )}
+          {isOnlyOneLeft && !product.isSoldOut && (
+            <span className="inline-flex items-center bg-amber-600 text-white text-[10px] sm:text-[11px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full shadow-md">
+              Only 1 quantity
+            </span>
+          )}
+        </div>
 
         {/* Badges: Top-Right Wishlist Toggle Button */}
         <button
@@ -160,7 +188,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </div>
                 <div className="flex items-center justify-center flex-wrap gap-1.5">
                   {product.sizes.map((sz) => {
-                    const isOutOfStock = product.sizeStockMap?.[sz] === false;
+                    const sm = product.sizeStockMap as Record<string, boolean | number> | undefined;
+                    const val = sm?.[sz];
+                    const isOutOfStock =
+                      product.isSoldOut ||
+                      val === false ||
+                      (typeof val === "number" && val <= 0);
                     const isJustAdded = addedSizeFeedback === sz;
 
                     return (

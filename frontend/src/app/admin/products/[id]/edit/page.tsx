@@ -56,6 +56,8 @@ export default function AdminEditProductPage() {
   });
 
   const [selectedSizes, setSelectedSizes] = useState<string[]>(["S", "M", "L", "XL", "XXL", "XXXL"]);
+  const [unstitchedQuantity, setUnstitchedQuantity] = useState<number>(1);
+  const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({});
   const [colorVariants, setColorVariants] = useState([{ name: "", hexCode: "#C47D5A" }]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
@@ -108,6 +110,26 @@ export default function AdminEditProductPage() {
       if (product.sizes && Array.isArray(product.sizes)) {
         setSelectedSizes(product.sizes);
       }
+
+      // Populate stock quantities from size_stock_map
+      const sm = (product.size_stock_map || {}) as Record<string, boolean | number>;
+      if (product.category === "unstitched") {
+        const q = typeof sm.total === "number" ? sm.total : (product.is_sold_out ? 0 : 1);
+        setUnstitchedQuantity(q);
+      }
+      const counts: Record<string, number> = {};
+      const productSizes = Array.isArray(product.sizes) ? product.sizes : [];
+      productSizes.forEach((s: string) => {
+        const val = sm[s];
+        if (typeof val === "number") {
+          counts[s] = val;
+        } else if (val === false) {
+          counts[s] = 0;
+        } else {
+          counts[s] = product.is_sold_out ? 0 : 1;
+        }
+      });
+      setSizeQuantities(counts);
 
       if (product.color_variants && Array.isArray(product.color_variants) && product.color_variants.length > 0) {
         setColorVariants(product.color_variants.map((c) => ({ name: c.name, hexCode: c.hexCode })));
@@ -168,12 +190,23 @@ export default function AdminEditProductPage() {
     try {
       const isUnstitched = form.category === "unstitched";
       const finalSizes = isUnstitched ? [] : selectedSizes;
-      const sizeStockMap: Record<string, boolean> = {};
-      if (!isUnstitched) {
+      const sizeStockMap: Record<string, number> = {};
+      let totalStock = 0;
+
+      if (isUnstitched) {
+        const qty = Math.max(0, Number(unstitchedQuantity) || 0);
+        sizeStockMap["total"] = qty;
+        totalStock = qty;
+      } else {
         finalSizes.forEach((s) => {
-          sizeStockMap[s] = true;
+          const qty = Math.max(0, Number(sizeQuantities[s] ?? 1));
+          sizeStockMap[s] = qty;
+          totalStock += qty;
         });
+        sizeStockMap["total"] = totalStock;
       }
+
+      const calculatedSoldOut = totalStock <= 0 || form.isSoldOut;
 
       let updatedImages = [...existingImages];
 
@@ -217,7 +250,7 @@ export default function AdminEditProductPage() {
         isBestSeller: form.isBestSeller,
         isFeatured: form.isFeatured,
         isActive: form.isActive,
-        isSoldOut: form.isSoldOut,
+        isSoldOut: calculatedSoldOut,
         accordions: {
           fabricCare: form.fabricCare,
           stitchingDetails: form.stitchingDetails,
@@ -415,29 +448,112 @@ export default function AdminEditProductPage() {
           </div>
         </div>
 
-        {/* Sizes */}
-        <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-3">
-          <h2 className="font-semibold text-[#1A1918]">Available Sizes</h2>
+        {/* Stock & Sizes */}
+        <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-4">
+          <h2 className="font-semibold text-[#1A1918]">Inventory & Sizes</h2>
           {form.category === "unstitched" ? (
-            <p className="text-xs text-[#75706B] bg-[#FAF9F6] p-3 rounded-lg border border-[#EAE5DE]">
-              Unstitched category does not require sizes. Products in this category are standard full fabric cuts.
-            </p>
+            <div className="space-y-3">
+              <p className="text-xs text-[#75706B] bg-[#FAF9F6] p-3 rounded-lg border border-[#EAE5DE]">
+                Unstitched category does not require size variants. Standard full fabric cut.
+              </p>
+              <div>
+                <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">
+                  Available Stock Quantity *
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="0"
+                    value={unstitchedQuantity}
+                    onChange={(e) => setUnstitchedQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-32 px-3 py-2 border border-[#EAE5DE] rounded-lg text-sm font-semibold focus:outline-none focus:border-[#C47D5A] bg-[#FAF9F6] transition-colors"
+                    required
+                  />
+                  <span className="text-xs text-[#75706B]">Pieces available</span>
+                </div>
+                <p className="text-xs text-[#A8A49F] mt-1.5">
+                  Quantity is hidden from customers. If stock is 1, website displays &ldquo;Only 1 quantity&rdquo;. If 0, marked Sold Out.
+                </p>
+              </div>
+            </div>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {SIZES.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => toggleSize(size)}
-                  className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all ${
-                    selectedSizes.includes(size)
-                      ? "bg-[#C47D5A] border-[#C47D5A] text-white shadow-sm"
-                      : "bg-[#FAF9F6] border-[#EAE5DE] text-[#75706B] hover:border-[#C47D5A]"
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-[#75706B] mb-2 uppercase tracking-wider">
+                  Select Available Sizes
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {SIZES.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => toggleSize(size)}
+                      className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all ${
+                        selectedSizes.includes(size)
+                          ? "bg-[#C47D5A] border-[#C47D5A] text-white shadow-sm"
+                          : "bg-[#FAF9F6] border-[#EAE5DE] text-[#75706B] hover:border-[#C47D5A]"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedSizes.length > 0 && (
+                <div className="pt-3 border-t border-[#EAE5DE] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-medium text-[#75706B] uppercase tracking-wider">
+                      Stock Quantity per Size
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-[#A8A49F]">Quick set:</span>
+                      {[1, 2, 5, 10].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => {
+                            const updated: Record<string, number> = {};
+                            selectedSizes.forEach((s) => { updated[s] = preset; });
+                            setSizeQuantities((prev) => ({ ...prev, ...updated }));
+                          }}
+                          className="px-2 py-0.5 text-[10px] font-medium bg-[#F5F3F0] hover:bg-[#EAE5DE] text-[#1A1918] rounded transition-colors"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {selectedSizes.map((size) => (
+                      <div
+                        key={size}
+                        className="flex items-center justify-between p-2.5 bg-[#FAF9F6] border border-[#EAE5DE] rounded-lg"
+                      >
+                        <span className="text-xs font-semibold text-[#1A1918]">Size {size}</span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min="0"
+                            value={sizeQuantities[size] ?? 1}
+                            onChange={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value) || 0);
+                              setSizeQuantities((prev) => ({ ...prev, [size]: val }));
+                            }}
+                            className="w-16 px-2 py-1 text-center text-xs font-semibold border border-[#EAE5DE] rounded bg-white focus:outline-none focus:border-[#C47D5A]"
+                          />
+                          <span className="text-[10px] text-[#75706B]">pcs</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-[#A8A49F]">
+                    Hidden from customers. If a size has 1 left, store displays &ldquo;Only 1 quantity&rdquo;.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
