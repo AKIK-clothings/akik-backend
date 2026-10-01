@@ -4,6 +4,8 @@ import { requireAdmin } from "../../middleware/auth";
 import { upload } from "../../middleware/upload";
 import { slugify } from "../../utils/slugify";
 import sharp from "sharp";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { r2Client, R2_BUCKET, getR2PublicUrl } from "../../config/r2";
 import {
   validateBody,
   validateUuidParam,
@@ -293,23 +295,20 @@ router.post(
           .webp({ quality: 75, effort: 6 })
           .toBuffer();
 
-        const fileName = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
+        const key = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("product-images")
-          .upload(fileName, compressedBuffer, {
-            contentType: "image/webp",
-            cacheControl: "31536000, public, immutable",
-            upsert: false,
-          });
+        // Upload compressed image to Cloudflare R2
+        await r2Client.send(
+          new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: key,
+            Body: compressedBuffer,
+            ContentType: "image/webp",
+            CacheControl: "public, max-age=31536000, immutable",
+          })
+        );
 
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from("product-images")
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push(urlData.publicUrl);
+        uploadedUrls.push(getR2PublicUrl(key));
       }
 
       res.json({

@@ -54,7 +54,7 @@ const securityHeaders = [
 
       "font-src 'self' https://fonts.gstatic.com data:",
 
-      "img-src 'self' data: blob: https://*.supabase.co https://*.razorpay.com https://images.unsplash.com https://res.cloudinary.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.razorpay.com https://images.unsplash.com https://res.cloudinary.com https://*.r2.dev",
 
       // Cloudinary videos are allowed here
       "media-src 'self' blob: data: https://res.cloudinary.com",
@@ -78,6 +78,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "**.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "**.r2.dev",
       },
       {
         protocol: "https",
