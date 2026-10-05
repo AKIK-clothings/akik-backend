@@ -31,6 +31,7 @@ export interface ApiProduct {
     hexCode: string;
     imageSrc: string;
     secondaryImageSrc?: string;
+    isSoldOut?: boolean;
   }>;
   primary_image: string;
   secondary_image: string;

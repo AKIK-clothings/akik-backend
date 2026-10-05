@@ -153,7 +153,10 @@ export default function AdminProductsPage() {
                     <td className="px-4 py-3 hidden sm:table-cell">
                       {(() => {
                         const sm = (product.size_stock_map || {}) as Record<string, boolean | number>;
-                        let isSoldOut = Boolean(product.is_sold_out);
+                        const cv = (product.color_variants || []) as Array<{ name?: string; isSoldOut?: boolean }>;
+                        const soldOutColorsCount = cv.filter((c) => c.isSoldOut).length;
+                        const allColorsSoldOut = cv.length > 0 && soldOutColorsCount === cv.length;
+                        let isSoldOut = Boolean(product.is_sold_out) || allColorsSoldOut;
                         let totalCount = 0;
                         let sizeDetails = "";
 
@@ -175,7 +178,7 @@ export default function AdminProductsPage() {
                         }
 
                         return (
-                          <div className="flex flex-col">
+                          <div className="flex flex-col gap-0.5">
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium w-fit ${
                                 isSoldOut
@@ -185,9 +188,16 @@ export default function AdminProductsPage() {
                             >
                               {isSoldOut ? "Sold Out" : `In Stock (${totalCount})`}
                             </span>
+                            {cv.length > 0 && (
+                              <span className="text-[10px] text-[#75706B]">
+                                {soldOutColorsCount > 0
+                                  ? `${soldOutColorsCount}/${cv.length} colors sold`
+                                  : `${cv.length} colors`}
+                              </span>
+                            )}
                             {sizeDetails && !isSoldOut && (
                               <span
-                                className="text-[10px] text-[#A8A49F] mt-0.5 truncate max-w-[140px]"
+                                className="text-[10px] text-[#A8A49F] truncate max-w-[140px]"
                                 title={sizeDetails}
                               >
                                 {sizeDetails}

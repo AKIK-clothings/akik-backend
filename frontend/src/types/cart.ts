@@ -10,6 +10,7 @@ export interface CartItem {
     name: string;
     hexCode: string;
     imageSrc: string;
+    isSoldOut?: boolean;
   };
   selectedSize: ApparelSize;
   regularPrice: number;

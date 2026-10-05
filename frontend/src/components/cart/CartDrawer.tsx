@@ -255,7 +255,12 @@ export const CartDrawer: React.FC = () => {
                                   backgroundColor: item.selectedColor.hexCode,
                                 }}
                               />
-                              {item.selectedColor.name}
+                              <span>{item.selectedColor.name}</span>
+                              {item.selectedColor.isSoldOut && (
+                                <span className="text-red-600 font-bold ml-1">
+                                  (Sold Out)
+                                </span>
+                              )}
                             </span>
                             <span>•</span>
                             <span className="font-semibold text-[#1F1E1D]">
@@ -436,16 +441,32 @@ export const CartDrawer: React.FC = () => {
                 </div>
 
                 {/* High-Contrast Checkout Button with Lock Icon */}
-                <Link
-                  href="/checkout"
-                  onClick={closeCart}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-[#1F1E1D] hover:bg-[#C47D5A] text-[#FAF9F6] text-xs font-semibold uppercase tracking-wider rounded-md shadow-lg transition-all active:scale-[0.99]"
-                >
-                  <Lock className="w-4 h-4 text-[#C47D5A]" />
-                  <span>Proceed to Checkout</span>
-                  <span>•</span>
-                  <span>₹{orderSummary.finalTotal.toLocaleString()}</span>
-                </Link>
+                {cart.some((item) => item.selectedColor?.isSoldOut) ? (
+                  <div className="space-y-2">
+                    <div className="p-2.5 rounded bg-red-50 border border-red-200 text-red-700 text-xs font-medium text-center">
+                      Please remove sold-out colour items to proceed
+                    </div>
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-gray-300 text-gray-500 text-xs font-semibold uppercase tracking-wider rounded-md cursor-not-allowed shadow-none"
+                    >
+                      <Lock className="w-4 h-4 text-gray-400" />
+                      <span>Proceed to Checkout</span>
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    href="/checkout"
+                    onClick={closeCart}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-[#1F1E1D] hover:bg-[#C47D5A] text-[#FAF9F6] text-xs font-semibold uppercase tracking-wider rounded-md shadow-lg transition-all active:scale-[0.99]"
+                  >
+                    <Lock className="w-4 h-4 text-[#C47D5A]" />
+                    <span>Proceed to Checkout</span>
+                    <span>•</span>
+                    <span>₹{orderSummary.finalTotal.toLocaleString()}</span>
+                  </Link>
+                )}
 
                 {/* Accepted Payment Method Badges (UPI, Cards, NetBanking, COD) */}
                 <div className="pt-2 text-center">

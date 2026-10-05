@@ -129,11 +129,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     color?: ColorVariant,
     quantity = 1
   ) => {
-    const selectedColorVariant = color || product.colorVariants[0] || {
-      name: "Default",
-      hexCode: "#C47D5A",
-      imageSrc: product.primaryImage,
-    };
+    const selectedColorVariant =
+      color ||
+      product.colorVariants.find((c) => !c.isSoldOut) ||
+      product.colorVariants[0] || {
+        name: "Default",
+        hexCode: "#C47D5A",
+        imageSrc: product.primaryImage,
+      };
+
+    if (selectedColorVariant.isSoldOut) {
+      showToast(`Color "${selectedColorVariant.name}" is currently sold out`);
+      return;
+    }
 
     const itemId = `${product.id}-${selectedColorVariant.name}-${size}`;
 

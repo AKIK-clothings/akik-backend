@@ -12,6 +12,7 @@ import {
   adminProductCreateSchema,
   adminProductUpdateSchema,
 } from "../../middleware/validate";
+import { invalidateFeaturedCache } from "../products";
 
 const router = Router();
 
@@ -71,6 +72,10 @@ router.post(
         }
       }
 
+      const cvList = Array.isArray(body.colorVariants) ? body.colorVariants : [];
+      const allColorsSoldOut = cvList.length > 0 && cvList.every((cv: any) => cv.isSoldOut === true);
+      const isSoldOut = body.isSoldOut !== undefined ? (body.isSoldOut || allColorsSoldOut) : allColorsSoldOut;
+
       const { data: product, error } = await supabase
         .from("products")
         .insert({
@@ -80,7 +85,7 @@ router.post(
           subcategory: body.subcategory,
           regular_price: body.regularPrice || body.discountedPrice,
           discounted_price: body.discountedPrice,
-          is_sold_out: body.isSoldOut || false,
+          is_sold_out: isSoldOut,
           sizes: body.sizes || [],
           size_stock_map: body.sizeStockMap || {},
           color_variants: body.colorVariants || [],
@@ -103,6 +108,7 @@ router.post(
         .single();
 
       if (error) throw error;
+      invalidateFeaturedCache();
       res.status(201).json({ product });
     } catch (err: any) {
       console.error("Admin POST /products error:", err);
@@ -200,6 +206,13 @@ router.put(
         }
       }
 
+      if (Array.isArray(body.colorVariants) && body.colorVariants.length > 0) {
+        const allColorsSold = body.colorVariants.every((cv: any) => cv.isSoldOut === true);
+        if (body.isSoldOut === undefined) {
+          updateData["is_sold_out"] = allColorsSold;
+        }
+      }
+
       const { data: product, error } = await supabase
         .from("products")
         .update(updateData)
@@ -208,6 +221,7 @@ router.put(
         .single();
 
       if (error) throw error;
+      invalidateFeaturedCache();
       res.json({ product });
     } catch (err: any) {
       console.error("Admin PUT /products/:id error:", err);
@@ -228,6 +242,7 @@ router.delete("/:id", validateUuidParam("id"), async (req: Request, res: Respons
 
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) throw error;
+    invalidateFeaturedCache();
 
     res.json({ success: true, message: "Product deleted successfully" });
   } catch (err) {
@@ -255,6 +270,7 @@ router.patch("/:id/stock", validateUuidParam("id"), async (req: Request, res: Re
       .single();
 
     if (error) throw error;
+    invalidateFeaturedCache();
     res.json({ product });
   } catch (err) {
     console.error("Admin PATCH /products/:id/stock error:", err);

@@ -49,8 +49,13 @@ export const requireAdmin = async (
   }
 
   const token = cookieToken || (authHeader ? authHeader.split(" ")[1] : "");
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    res.status(500).json({ error: "Server configuration error: JWT_SECRET not configured" });
+    return;
+  }
+
   try {
-    const jwtSecret = process.env.JWT_SECRET || "W7FYpdE1tN98bIbcK04mRG2S4vW55z8qzK44G1B7jtoXufgJShd_xkZqiUgix4jL0bskzAHtH44SRZf5J0JW-Q";
     const decoded = jwt.verify(token, jwtSecret) as AdminPayload;
 
     // Fast-path: Check memory cache first

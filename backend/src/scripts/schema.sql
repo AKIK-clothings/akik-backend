@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS products (
   is_sold_out       BOOLEAN DEFAULT false,
   sizes             TEXT[] DEFAULT '{}',
   size_stock_map    JSONB DEFAULT '{}',
-  color_variants    JSONB DEFAULT '[]',
+  color_variants    JSONB DEFAULT '[]', -- [{ "name": "Red", "hexCode": "#FF0000", "imageSrc": "...", "isSoldOut": false }]
   primary_image     TEXT DEFAULT '',
   secondary_image   TEXT DEFAULT '',
   gallery_images    TEXT[] DEFAULT '{}',
@@ -220,7 +220,7 @@ CREATE POLICY "Service role full access - admins"
 -- ─── SEED: Default promo codes ───────────────────────────────
 INSERT INTO promo_codes (code, discount_percentage, description, min_order_value, is_active)
 VALUES
-  ('FESTIVE15', 15, '15% off festive celebration discount', 2500, true),
+  ('FESTIVE15', 15, '15% off festive celebration discount', 2999, true),
   ('AKIKWELCOME', 10, '10% off your first boutique purchase', 1500, true)
 ON CONFLICT (code) DO NOTHING;
 

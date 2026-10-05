@@ -19,14 +19,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const { addToCart, isInWishlist, toggleWishlist } = useCart();
 
-  // Active color variant state
-  const [selectedColor, setSelectedColor] = useState<ColorVariant>(
-    product.colorVariants[0] || {
+  const isAllColorsSold =
+    product.colorVariants && product.colorVariants.length > 0
+      ? product.colorVariants.every((c) => c.isSoldOut)
+      : product.isSoldOut;
+
+  // Active color variant state - default to first available non-sold-out variant
+  const [selectedColor, setSelectedColor] = useState<ColorVariant>(() => {
+    if (product.colorVariants && product.colorVariants.length > 0) {
+      return (
+        product.colorVariants.find((c) => !c.isSoldOut) ||
+        product.colorVariants[0]
+      );
+    }
+    return {
       name: "Default",
       hexCode: "#C47D5A",
       imageSrc: product.primaryImage,
-    }
-  );
+    };
+  });
 
   // Added-to-cart micro-interaction feedback state
   const [addedSizeFeedback, setAddedSizeFeedback] = useState<string | null>(null);
@@ -49,7 +60,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     const sm = product.sizeStockMap as Record<string, boolean | number> | undefined;
     const val = sm?.[size];
     const isOutOfStock =
-      product.isSoldOut ||
+      isAllColorsSold ||
+      selectedColor.isSoldOut ||
       (product.sizes.length > 0 &&
         (val === false || (typeof val === "number" && val <= 0)));
     if (isOutOfStock) return;
@@ -63,7 +75,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   const isOnlyOneLeft = (() => {
-    if (product.isSoldOut) return false;
+    if (isAllColorsSold) return false;
     const sm = product.sizeStockMap as Record<string, boolean | number> | undefined;
     if (!sm) return false;
     if (typeof sm.total === "number") return sm.total === 1;
@@ -85,6 +97,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const handleColorChange = (e: React.MouseEvent, color: ColorVariant) => {
     e.preventDefault();
     e.stopPropagation();
+    if (color.isSoldOut) return;
     setSelectedColor(color);
   };
 
@@ -109,7 +122,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Primary & Secondary Images (fade-in secondary on hover) */}
           <div
             className={`w-full h-full relative transition-all duration-500 ${
-              product.isSoldOut ? "filter grayscale contrast-75 opacity-75" : ""
+              isAllColorsSold ? "filter grayscale contrast-75 opacity-75" : ""
             }`}
           >
             {/* Primary Image */}
@@ -123,7 +136,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             />
 
             {/* Secondary Image Fade-in on Hover - deferred until hover */}
-            {!product.isSoldOut && secondaryImage && isHovered && (
+            {!isAllColorsSold && secondaryImage && isHovered && (
               <Image
                 src={secondaryImage}
                 alt={`${product.name} alternate view`}
@@ -137,12 +150,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Badges: Top-Left Badges */}
         <div className="absolute top-2.5 left-2.5 z-20 pointer-events-none flex flex-col gap-1 items-start">
-          {discountPercentage > 0 && !product.isSoldOut && (
+          {discountPercentage > 0 && !isAllColorsSold && (
             <span className="inline-flex items-center bg-[#C47D5A] text-white text-[10px] sm:text-[11px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full shadow-md">
               {discountPercentage}% OFF
             </span>
           )}
-          {isOnlyOneLeft && !product.isSoldOut && (
+          {isOnlyOneLeft && !isAllColorsSold && (
             <span className="inline-flex items-center bg-amber-600 text-white text-[10px] sm:text-[11px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full shadow-md">
               Only 1 quantity
             </span>
@@ -169,8 +182,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           />
         </button>
 
-        {/* "Sold Out" Overlay (Prompt 2 requirement) */}
-        {product.isSoldOut && (
+        {/* "Sold Out" Overlay (Only when all color variants sold out) */}
+        {isAllColorsSold && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[1px] pointer-events-none">
             <span className="bg-[#1F1E1D] text-[#FAF9F6] text-xs sm:text-sm font-serif tracking-[0.2em] font-semibold px-4 py-1.5 rounded uppercase shadow-xl border border-white/20">
               SOLD OUT
@@ -179,9 +192,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
 
         {/* 3. Quick-Add / Size Selector (Slides up on desktop hover) */}
-        {!product.isSoldOut && (
+        {!isAllColorsSold && (
           <div className="absolute bottom-0 inset-x-0 z-20 hidden md:block translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out bg-gradient-to-t from-black/80 via-black/50 to-transparent p-3 pt-6">
-            {product.sizes && product.sizes.length > 0 ? (
+            {selectedColor.isSoldOut ? (
+              <div className="flex items-center justify-center py-2">
+                <span className="bg-red-900/80 text-rose-200 text-xs font-semibold px-3 py-1 rounded border border-red-500/30 uppercase tracking-wider">
+                  {selectedColor.name} Sold Out
+                </span>
+              </div>
+            ) : product.sizes && product.sizes.length > 0 ? (
               <>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-white/90 mb-1.5 text-center">
                   Quick Add Size
@@ -191,7 +210,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     const sm = product.sizeStockMap as Record<string, boolean | number> | undefined;
                     const val = sm?.[sz];
                     const isOutOfStock =
-                      product.isSoldOut ||
+                      isAllColorsSold ||
+                      selectedColor.isSoldOut ||
                       val === false ||
                       (typeof val === "number" && val <= 0);
                     const isJustAdded = addedSizeFeedback === sz;
@@ -249,20 +269,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div className="flex items-center gap-1.5 flex-wrap">
             {product.colorVariants.map((color) => {
               const isCurrent = selectedColor.name === color.name;
+              const isColorSold = Boolean(color.isSoldOut);
               return (
                 <button
                   key={color.name}
                   type="button"
-                  onClick={(e) => handleColorChange(e, color)}
-                  onMouseEnter={() => setSelectedColor(color)}
-                  aria-label={`Select color ${color.name}`}
-                  className={`relative w-4 h-4 rounded-full transition-transform ${
+                  disabled={isColorSold}
+                  onClick={(e) => !isColorSold && handleColorChange(e, color)}
+                  onMouseEnter={() => !isColorSold && setSelectedColor(color)}
+                  aria-label={`Select color ${color.name}${isColorSold ? " (Sold Out)" : ""}`}
+                  title={`${color.name}${isColorSold ? " (Sold Out)" : ""}`}
+                  className={`relative w-4 h-4 rounded-full transition-transform overflow-hidden ${
                     isCurrent
                       ? "ring-2 ring-offset-1 ring-[#C47D5A] scale-110"
+                      : isColorSold
+                      ? "opacity-35 cursor-not-allowed border border-gray-300"
                       : "hover:scale-110 opacity-80 hover:opacity-100"
                   }`}
                   style={{ backgroundColor: color.hexCode }}
-                />
+                >
+                  {isColorSold && (
+                    <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="w-full h-[1.5px] bg-red-600 rotate-45 transform" />
+                    </span>
+                  )}
+                </button>
               );
             })}
           </div>
@@ -270,6 +301,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         <span className="text-[11px] text-[#75706B] font-sans truncate">
           {selectedColor.name}
+          {selectedColor.isSoldOut && (
+            <span className="text-red-600 font-semibold ml-1">(Sold Out)</span>
+          )}
         </span>
       </div>
 

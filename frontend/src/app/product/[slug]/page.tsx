@@ -57,7 +57,9 @@ export default function ProductDetailPage() {
         if (isMounted && data) {
           const mapped = mapApiProduct(data) as unknown as Product;
           setProduct(mapped);
-          if (mapped.colorVariants?.[0]) setSelectedColor(mapped.colorVariants[0]);
+          const firstAvailableColor =
+            mapped.colorVariants?.find((c) => !c.isSoldOut) || mapped.colorVariants?.[0];
+          if (firstAvailableColor) setSelectedColor(firstAvailableColor);
           if (mapped.sizes?.[0]) setSelectedSize(mapped.sizes[0]);
         }
       })
@@ -74,11 +76,15 @@ export default function ProductDetailPage() {
 
   // Active Color Variant State
   const [selectedColor, setSelectedColor] = useState<ColorVariant>(() => {
-    return product?.colorVariants?.[0] || {
-      name: "Default",
-      hexCode: "#C47D5A",
-      imageSrc: product?.primaryImage || "",
-    };
+    const available = product?.colorVariants?.find((c) => !c.isSoldOut);
+    return (
+      available ||
+      product?.colorVariants?.[0] || {
+        name: "Default",
+        hexCode: "#C47D5A",
+        imageSrc: product?.primaryImage || "",
+      }
+    );
   });
 
   // Active Size State
@@ -157,15 +163,23 @@ export default function ProductDetailPage() {
   const isSizeOutOfStock = currentStock.isOutOfStock;
   const isOnlyOneLeft = currentStock.quantity === 1;
 
+  const isColorSoldOut = Boolean(selectedColor.isSoldOut);
+  const isAllColorsSoldOut = Boolean(
+    product?.colorVariants &&
+      product.colorVariants.length > 0 &&
+      product.colorVariants.every((c) => c.isSoldOut)
+  );
+  const isFullySoldOut = Boolean(product?.isSoldOut) || isAllColorsSoldOut;
+
   const effectiveSize = isUnstitched ? "Unstitched" : selectedSize;
 
   const handleAddToCart = () => {
-    if (!product || product.isSoldOut || isSizeOutOfStock) return;
+    if (!product || isFullySoldOut || isColorSoldOut || isSizeOutOfStock) return;
     addToCart(product, effectiveSize as ApparelSize, selectedColor, 1);
   };
 
   const handleBuyNow = () => {
-    if (!product || product.isSoldOut || isSizeOutOfStock) return;
+    if (!product || isFullySoldOut || isColorSoldOut || isSizeOutOfStock) return;
     addToCart(product, effectiveSize as ApparelSize, selectedColor, 1);
     router.push("/checkout");
   };
@@ -326,8 +340,14 @@ export default function ProductDetailPage() {
             {/* Color Selector */}
             <div>
               <div className="flex items-center justify-between mb-2.5 text-xs">
-                <span className="font-semibold text-[#1F1E1D]">
-                  Color: <strong className="text-[#C47D5A]">{selectedColor.name}</strong>
+                <span className="font-semibold text-[#1F1E1D] flex items-center gap-2">
+                  <span>Color:</span>
+                  <strong className="text-[#C47D5A]">{selectedColor.name}</strong>
+                  {selectedColor.isSoldOut && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-200">
+                      Sold Out
+                    </span>
+                  )}
                 </span>
                 <span className="text-[#75706B]">
                   {product.colorVariants.length} Artisanal Shades
@@ -338,19 +358,32 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-3">
                 {product.colorVariants.map((color) => {
                   const isCurrent = selectedColor.name === color.name;
+                  const isSold = Boolean(color.isSoldOut);
                   return (
                     <button
                       key={color.name}
                       type="button"
-                      onClick={() => setSelectedColor(color)}
-                      aria-label={`Select color ${color.name}`}
-                      className={`relative w-8 h-8 rounded-full transition-transform ${
-                        isCurrent
-                          ? "ring-2 ring-[#C47D5A] ring-offset-2 scale-110 shadow-sm"
-                          : "border border-black/10 hover:scale-105"
+                      disabled={isSold}
+                      onClick={() => {
+                        if (!isSold) setSelectedColor(color);
+                      }}
+                      title={isSold ? `${color.name} (Sold Out)` : color.name}
+                      aria-label={isSold ? `${color.name} - Sold Out` : `Select color ${color.name}`}
+                      className={`relative w-8 h-8 rounded-full transition-all ${
+                        isSold
+                          ? "opacity-35 cursor-not-allowed border-2 border-dashed border-gray-400"
+                          : isCurrent
+                          ? "ring-2 ring-[#C47D5A] ring-offset-2 scale-110 shadow-sm cursor-pointer"
+                          : "border border-black/10 hover:scale-105 cursor-pointer"
                       }`}
                       style={{ backgroundColor: color.hexCode }}
-                    />
+                    >
+                      {isSold && (
+                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="w-full h-0.5 bg-red-600 rotate-45 transform" />
+                        </span>
+                      )}
+                    </button>
                   );
                 })}
               </div>
@@ -486,14 +519,16 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  disabled={product.isSoldOut || isSizeOutOfStock}
+                  disabled={isFullySoldOut || isColorSoldOut || isSizeOutOfStock}
                   onClick={handleAddToCart}
                   className="flex-1 flex items-center justify-center gap-2.5 py-4 px-6 bg-[#1F1E1D] hover:bg-[#C47D5A] text-[#FAF9F6] text-xs font-semibold uppercase tracking-widest rounded-md shadow-lg transition-all duration-300 active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <ShoppingBag className="w-4 h-4" />
                   <span>
-                    {product.isSoldOut
+                    {isFullySoldOut
                       ? "SOLD OUT"
+                      : isColorSoldOut
+                      ? "COLOR SOLD OUT"
                       : isSizeOutOfStock
                       ? "SIZE OUT OF STOCK"
                       : "Add to Bag"}
@@ -518,7 +553,7 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Secondary Buy It Now Instant Checkout Button */}
-              {!product.isSoldOut && !isSizeOutOfStock && (
+              {!isFullySoldOut && !isColorSoldOut && !isSizeOutOfStock && (
                 <button
                   type="button"
                   onClick={handleBuyNow}

@@ -58,7 +58,9 @@ export default function AdminEditProductPage() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>(["S", "M", "L", "XL", "XXL", "XXXL"]);
   const [unstitchedQuantity, setUnstitchedQuantity] = useState<number>(1);
   const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({});
-  const [colorVariants, setColorVariants] = useState([{ name: "", hexCode: "#C47D5A" }]);
+  const [colorVariants, setColorVariants] = useState<{ name: string; hexCode: string; isSoldOut: boolean }[]>([
+    { name: "", hexCode: "#C47D5A", isSoldOut: false },
+  ]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
@@ -132,7 +134,13 @@ export default function AdminEditProductPage() {
       setSizeQuantities(counts);
 
       if (product.color_variants && Array.isArray(product.color_variants) && product.color_variants.length > 0) {
-        setColorVariants(product.color_variants.map((c) => ({ name: c.name, hexCode: c.hexCode })));
+        setColorVariants(
+          product.color_variants.map((c) => ({
+            name: c.name,
+            hexCode: c.hexCode,
+            isSoldOut: Boolean(c.isSoldOut),
+          }))
+        );
       }
 
       const images: string[] = [];
@@ -206,7 +214,9 @@ export default function AdminEditProductPage() {
         sizeStockMap["total"] = totalStock;
       }
 
-      const calculatedSoldOut = totalStock <= 0 || form.isSoldOut;
+      const validColors = colorVariants.filter((c) => c.name.trim());
+      const allColorsSoldOut = validColors.length > 0 && validColors.every((c) => c.isSoldOut);
+      const calculatedSoldOut = allColorsSoldOut || totalStock <= 0;
 
       let updatedImages = [...existingImages];
 
@@ -234,10 +244,11 @@ export default function AdminEditProductPage() {
         discountedPrice: Number(form.discountedPrice),
         sizes: finalSizes,
         sizeStockMap,
-        colorVariants: colorVariants.filter((c) => c.name).map((c, i) => ({
+        colorVariants: validColors.map((c, i) => ({
           name: c.name,
           hexCode: c.hexCode,
           imageSrc: updatedImages[i] || updatedImages[0] || "",
+          isSoldOut: Boolean(c.isSoldOut),
         })),
         primaryImage: updatedImages[0] || "",
         secondaryImage: updatedImages[1] || "",
@@ -428,16 +439,6 @@ export default function AdminEditProductPage() {
             <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[#1A1918]">
               <input
                 type="checkbox"
-                name="isSoldOut"
-                checked={form.isSoldOut}
-                onChange={handleChange}
-                className="rounded text-[#C47D5A] focus:ring-[#C47D5A]"
-              />
-              Mark as Sold Out
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[#1A1918]">
-              <input
-                type="checkbox"
                 name="isActive"
                 checked={form.isActive}
                 onChange={handleChange}
@@ -564,15 +565,15 @@ export default function AdminEditProductPage() {
             <h2 className="font-semibold text-[#1A1918]">Color Variants</h2>
             <button
               type="button"
-              onClick={() => setColorVariants((prev) => [...prev, { name: "", hexCode: "#C47D5A" }])}
+              onClick={() => setColorVariants((prev) => [...prev, { name: "", hexCode: "#C47D5A", isSoldOut: false }])}
               className="text-xs text-[#C47D5A] hover:text-[#A86947] font-semibold flex items-center gap-1"
             >
               <Plus className="w-3.5 h-3.5" /> Add Color
             </button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {colorVariants.map((c, i) => (
-              <div key={i} className="flex items-center gap-3">
+              <div key={i} className="flex items-center gap-3 p-2 rounded-lg border border-[#EAE5DE] bg-[#FAF9F6]">
                 <input
                   type="color"
                   value={c.hexCode}
@@ -580,7 +581,7 @@ export default function AdminEditProductPage() {
                     const val = e.target.value;
                     setColorVariants((prev) => prev.map((item, idx) => (idx === i ? { ...item, hexCode: val } : item)));
                   }}
-                  className="w-10 h-10 rounded border border-[#EAE5DE] cursor-pointer p-0.5 bg-white shrink-0"
+                  className="w-9 h-9 rounded border border-[#EAE5DE] cursor-pointer shrink-0"
                 />
                 <input
                   type="text"
@@ -590,13 +591,29 @@ export default function AdminEditProductPage() {
                     setColorVariants((prev) => prev.map((item, idx) => (idx === i ? { ...item, name: val } : item)));
                   }}
                   placeholder="Color name (e.g. Noir, Turquoise)"
-                  className="flex-1 px-3 py-2 bg-[#FAF9F6] border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A]"
+                  className="flex-1 px-3 py-2 bg-white border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A]"
                 />
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium bg-white px-2.5 py-2 rounded-lg border border-[#EAE5DE] shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={c.isSoldOut}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setColorVariants((prev) =>
+                        prev.map((item, idx) => (idx === i ? { ...item, isSoldOut: checked } : item))
+                      );
+                    }}
+                    className="rounded text-red-600 focus:ring-red-500"
+                  />
+                  <span className={c.isSoldOut ? "text-red-600 font-semibold" : "text-[#75706B]"}>
+                    Sold Out
+                  </span>
+                </label>
                 {colorVariants.length > 1 && (
                   <button
                     type="button"
                     onClick={() => setColorVariants((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="p-2 text-[#75706B] hover:text-red-600 transition-colors"
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                   >
                     <Minus className="w-4 h-4" />
                   </button>

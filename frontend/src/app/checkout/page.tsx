@@ -126,6 +126,12 @@ export default function CheckoutPage() {
 
     if (cart.length === 0) return;
 
+    const hasSoldOutColor = cart.some((item) => Boolean(item.selectedColor?.isSoldOut));
+    if (hasSoldOutColor) {
+      setError("One or more items in your bag has a sold-out colour variant. Please remove them before proceeding.");
+      return;
+    }
+
     const errors: Record<string, string> = {
       name: validateField("name", form.name),
       phone: validateField("phone", form.phone),
@@ -467,7 +473,13 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-[#1F1E1D] line-clamp-2 leading-tight">{item.name}</p>
-                      <p className="text-xs text-[#75706B] mt-0.5">{item.selectedColor.name} · {item.selectedSize} · Qty {item.quantity}</p>
+                      <p className="text-xs text-[#75706B] mt-0.5">
+                        {item.selectedColor.name}
+                        {item.selectedColor.isSoldOut && (
+                          <span className="text-red-600 font-bold ml-1">(Sold Out)</span>
+                        )}
+                        {" · "}{item.selectedSize} · Qty {item.quantity}
+                      </p>
                     </div>
                     <p className="text-sm font-semibold text-[#1F1E1D] shrink-0">₹{(item.discountedPrice * item.quantity).toLocaleString("en-IN")}</p>
                   </div>
@@ -533,11 +545,17 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {cart.some((item) => Boolean(item.selectedColor?.isSoldOut)) && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-medium text-center">
+                One or more items in your bag has a sold-out colour variant. Please remove them to proceed.
+              </div>
+            )}
+
             {/* Pay Button */}
             <button
               type="submit"
               form="checkout-form"
-              disabled={isProcessing}
+              disabled={isProcessing || cart.some((item) => Boolean(item.selectedColor?.isSoldOut))}
               className="w-full py-4 bg-[#C47D5A] hover:bg-[#A86947] text-white font-semibold text-sm rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
             >
               {isProcessing ? (

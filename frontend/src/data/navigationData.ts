@@ -11,7 +11,7 @@ export const ANNOUNCEMENT_ITEMS: AnnouncementItem[] = [
   },
   {
     id: "promo-2",
-    text: "Complimentary Express Shipping across India on all prepaid orders",
+    text: "Complimentary Express Shipping across India on all orders above ₹2,999",
     highlightText: "Free Shipping",
     badge: "Site-wide",
     link: "/collections",

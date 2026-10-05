@@ -39,9 +39,15 @@ router.post("/login", authLimiter, validateBody(adminLoginSchema), async (req: R
       return;
     }
 
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      res.status(500).json({ error: "Server configuration error: JWT_SECRET not configured" });
+      return;
+    }
+
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: admin.role || "admin" },
-      process.env.JWT_SECRET || "W7FYpdE1tN98bIbcK04mRG2S4vW55z8qzK44G1B7jtoXufgJShd_xkZqiUgix4jL0bskzAHtH44SRZf5J0JW-Q",
+      jwtSecret,
       { expiresIn: (process.env.JWT_EXPIRES_IN || "7d") as jwt.SignOptions["expiresIn"] }
     );
 
@@ -70,7 +76,22 @@ router.get("/me", requireAdmin, (req: Request, res: Response): void => {
 
 // POST /api/admin/logout
 router.post("/logout", (req: Request, res: Response): void => {
-  invalidateAdminAuthCache();
+  const authHeader = req.headers.authorization;
+  const cookieToken = req.cookies?.akik_admin_token;
+  const token = cookieToken || (authHeader ? authHeader.split(" ")[1] : "");
+
+  if (token && process.env.JWT_SECRET) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET) as { id?: string };
+      if (decoded?.id) {
+        invalidateAdminAuthCache(decoded.id);
+      } else {
+        invalidateAdminAuthCache();
+      }
+    } catch {
+      // Token invalid or expired; no-op on cache
+    }
+  }
   res.clearCookie("akik_admin_token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

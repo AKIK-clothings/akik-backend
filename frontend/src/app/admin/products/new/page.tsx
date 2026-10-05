@@ -40,7 +40,9 @@ export default function AdminNewProductPage() {
   const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({
     S: 1, M: 1, L: 1, XL: 1, XXL: 1, XXXL: 1, "Free Size": 1,
   });
-  const [colorVariants, setColorVariants] = useState([{ name: "", hexCode: "#C47D5A" }]);
+  const [colorVariants, setColorVariants] = useState<{ name: string; hexCode: string; isSoldOut: boolean }[]>([
+    { name: "", hexCode: "#C47D5A", isSoldOut: false },
+  ]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,7 +101,9 @@ export default function AdminNewProductPage() {
         sizeStockMap["total"] = totalStock;
       }
 
-      const isSoldOut = totalStock <= 0;
+      const validColors = colorVariants.filter((c) => c.name.trim());
+      const allColorsSoldOut = validColors.length > 0 && validColors.every((c) => c.isSoldOut);
+      const isSoldOut = allColorsSoldOut || totalStock <= 0;
 
       // Step 1: Create product record
       const finalSubcategory = isCustomSubcategory ? customSubcategory.trim() : form.subcategory;
@@ -118,7 +122,11 @@ export default function AdminNewProductPage() {
         isSoldOut,
         sizes: finalSizes,
         sizeStockMap,
-        colorVariants: colorVariants.filter((c) => c.name),
+        colorVariants: validColors.map((c) => ({
+          name: c.name.trim(),
+          hexCode: c.hexCode,
+          isSoldOut: Boolean(c.isSoldOut),
+        })),
         sku: form.sku,
         description: form.description,
         fabricDetails: form.fabricDetails,
@@ -393,27 +401,69 @@ export default function AdminNewProductPage() {
 
         {/* Color Variants */}
         <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-3">
-          <h2 className="font-semibold text-[#1A1918]">Color Variants</h2>
-          {colorVariants.map((color, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <input type="color" value={color.hexCode}
-                onChange={(e) => setColorVariants((prev) => prev.map((c, idx) => idx === i ? { ...c, hexCode: e.target.value } : c))}
-                className="w-10 h-10 rounded-lg border border-[#EAE5DE] cursor-pointer" />
-              <input value={color.name} placeholder="Color name (e.g. Midnight Black)"
-                onChange={(e) => setColorVariants((prev) => prev.map((c, idx) => idx === i ? { ...c, name: e.target.value } : c))}
-                className="flex-1 px-3 py-2 border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A]" />
-              {colorVariants.length > 1 && (
-                <button type="button" onClick={() => setColorVariants((prev) => prev.filter((_, idx) => idx !== i))}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                  <Minus className="w-4 h-4" />
-                </button>
-              )}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-[#1A1918]">Color Variants</h2>
+              <p className="text-xs text-[#75706B]">Set shade name and mark out-of-stock per color</p>
             </div>
-          ))}
-          <button type="button" onClick={() => setColorVariants((prev) => [...prev, { name: "", hexCode: "#C47D5A" }])}
-            className="flex items-center gap-2 text-sm text-[#C47D5A] hover:text-[#A86947] font-medium transition-colors">
-            <Plus className="w-4 h-4" /> Add Color Variant
-          </button>
+            <button
+              type="button"
+              onClick={() => setColorVariants((prev) => [...prev, { name: "", hexCode: "#C47D5A", isSoldOut: false }])}
+              className="flex items-center gap-1.5 text-xs text-[#C47D5A] hover:text-[#A86947] font-semibold transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Color
+            </button>
+          </div>
+          <div className="space-y-2.5">
+            {colorVariants.map((color, i) => (
+              <div key={i} className="flex items-center gap-3 p-2 rounded-lg border border-[#EAE5DE] bg-[#FAF9F6]">
+                <input
+                  type="color"
+                  value={color.hexCode}
+                  onChange={(e) =>
+                    setColorVariants((prev) =>
+                      prev.map((c, idx) => (idx === i ? { ...c, hexCode: e.target.value } : c))
+                    )
+                  }
+                  className="w-9 h-9 rounded border border-[#EAE5DE] cursor-pointer shrink-0"
+                />
+                <input
+                  value={color.name}
+                  placeholder="Color name (e.g. Midnight Black)"
+                  onChange={(e) =>
+                    setColorVariants((prev) =>
+                      prev.map((c, idx) => (idx === i ? { ...c, name: e.target.value } : c))
+                    )
+                  }
+                  className="flex-1 px-3 py-2 bg-white border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A]"
+                />
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium bg-white px-2.5 py-2 rounded-lg border border-[#EAE5DE] shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={color.isSoldOut}
+                    onChange={(e) =>
+                      setColorVariants((prev) =>
+                        prev.map((c, idx) => (idx === i ? { ...c, isSoldOut: e.target.checked } : c))
+                      )
+                    }
+                    className="rounded text-red-600 focus:ring-red-500"
+                  />
+                  <span className={color.isSoldOut ? "text-red-600 font-semibold" : "text-[#75706B]"}>
+                    Sold Out
+                  </span>
+                </label>
+                {colorVariants.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setColorVariants((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Description */}

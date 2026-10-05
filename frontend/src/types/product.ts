@@ -5,6 +5,7 @@ export interface ColorVariant {
   hexCode: string;
   imageSrc: string;
   secondaryImageSrc?: string;
+  isSoldOut?: boolean;
 }
 
 export interface SizeStock {
