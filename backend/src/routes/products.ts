@@ -17,12 +17,18 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       minPrice,
       maxPrice,
       limit = "100",
+      section,
     } = req.query;
 
     let query = supabase
       .from("products")
       .select("*")
       .eq("is_active", true);
+
+    // Section filter ('women' | 'men') - backwards compatible: when omitted, all products returned
+    if (section && typeof section === "string" && section.toLowerCase() !== "all") {
+      query = query.eq("section", section.toLowerCase().trim());
+    }
 
     // Category filter
     if (category && category !== "all") {
@@ -74,10 +80,15 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 
     let result = products || [];
 
-    // Post-fetch filters (JSONB fields)
+    // Post-fetch filters (subcategory, sizes, colors)
     if (sub) {
-      const subs = Array.isArray(sub) ? sub : [sub];
-      result = result.filter((p) => subs.includes(p.subcategory));
+      const subs = (Array.isArray(sub) ? sub : [sub]).map((s) => String(s).toLowerCase().trim());
+      result = result.filter((p) => {
+        const pSub = (p.subcategory || "").toLowerCase().trim();
+        if (!pSub) return false;
+        const pSubNormalized = pSub.replace(/[\s_-]+/g, "-");
+        return subs.includes(pSub) || subs.some((s) => s.replace(/[\s_-]+/g, "-") === pSubNormalized);
+      });
     }
 
     if (size) {

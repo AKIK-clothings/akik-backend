@@ -5,19 +5,30 @@ import { useRouter } from "next/navigation";
 import { Upload, X, Loader2, Plus, Minus } from "lucide-react";
 import { adminApi } from "@/lib/api";
 
-const CATEGORIES = [
-  { value: "stitched", label: "Stitched" },
-  { value: "unstitched", label: "Unstitched" },
-  { value: "kids", label: "Kids" },
-];
+const CATEGORIES_BY_SECTION: Record<"women" | "men", Array<{ value: string; label: string }>> = {
+  women: [
+    { value: "unstitched", label: "Unstitched" },
+    { value: "stitched", label: "Stitched" },
+    { value: "kids", label: "Kids" },
+  ],
+  men: [
+    { value: "kurta-sets", label: "Kurta Sets" },
+  ],
+};
 
-const SUBCATEGORIES = [
-  "Embroidered Satin with Dupatta",
-  "Luxury Cotton Satin",
-  "Satin Lucknowi Collection",
-  "Rose Royale Collection",
-  "PURE COTTON SUITS",
-];
+const DEFAULT_SUBCATEGORIES: Record<"women" | "men", string[]> = {
+  women: [
+    "Embroidered Satin with Dupatta",
+    "Luxury Cotton Satin",
+    "Satin Lucknowi Collection",
+    "Rose Royale Collection",
+    "PURE COTTON SUITS",
+  ],
+  men: [
+    "Premium Cotton Plain",
+    "Premium cotton self designed",
+  ],
+};
 
 const SIZES = ["S", "M", "L", "XL", "XXL", "XXXL", "Free Size"];
 
@@ -25,11 +36,30 @@ export default function AdminNewProductPage() {
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const [section, setSection] = useState<"women" | "men">("women");
+  const [subcategories, setSubcategories] = useState<Array<{ id?: string; name: string }>>([]);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
+
+  const [isCreatingSubcategory, setIsCreatingSubcategory] = useState(false);
+  const [newSubcategoryName, setNewSubcategoryName] = useState("");
+  const [subcategoryError, setSubcategoryError] = useState("");
+  const [subcategorySuccess, setSubcategorySuccess] = useState("");
+  const [isSavingSubcategory, setIsSavingSubcategory] = useState(false);
+
   const [form, setForm] = useState({
-    name: "", category: "unstitched", subcategory: "Embroidered Satin with Dupatta",
-    regularPrice: "", discountedPrice: "",
-    description: "", fabricDetails: "", dimensions: "",
-    sku: "", isNewArrival: false, isBestSeller: false, isFeatured: false, isActive: true,
+    name: "",
+    category: "unstitched",
+    subcategory: "Embroidered Satin with Dupatta",
+    regularPrice: "",
+    discountedPrice: "",
+    description: "",
+    fabricDetails: "",
+    dimensions: "",
+    sku: "",
+    isNewArrival: false,
+    isBestSeller: false,
+    isFeatured: false,
+    isActive: true,
     fabricCare: "Dry clean or gentle cold hand wash.",
     stitchingDetails: "Comes with 2.5-inch inner margins for tailoring.",
     shippingReturns: "Dispatched within 24-48 hours. 7-day exchanges across India.",
@@ -47,8 +77,102 @@ export default function AdminNewProductPage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [isCustomSubcategory, setIsCustomSubcategory] = useState(false);
-  const [customSubcategory, setCustomSubcategory] = useState("");
+
+  // Load subcategories whenever section changes
+  React.useEffect(() => {
+    let mounted = true;
+    const loadSubcategories = async () => {
+      try {
+        const res = await adminApi.getSubcategories(section);
+        if (!mounted) return;
+        if (res && res.subcategories && res.subcategories.length > 0) {
+          const list = res.subcategories.map((s) => ({ id: s.id, name: s.name }));
+          setSubcategories(list);
+          setForm((prev) => ({ ...prev, subcategory: list[0].name }));
+          setSelectedSubcategoryId(list[0].id || null);
+        } else {
+          const defaults = DEFAULT_SUBCATEGORIES[section].map((name) => ({ name }));
+          setSubcategories(defaults);
+          setForm((prev) => ({ ...prev, subcategory: defaults[0].name }));
+          setSelectedSubcategoryId(null);
+        }
+      } catch {
+        if (!mounted) return;
+        const defaults = DEFAULT_SUBCATEGORIES[section].map((name) => ({ name }));
+        setSubcategories(defaults);
+        setForm((prev) => ({ ...prev, subcategory: defaults[0].name }));
+        setSelectedSubcategoryId(null);
+      }
+    };
+    loadSubcategories();
+    return () => {
+      mounted = false;
+    };
+  }, [section]);
+
+  const handleSectionChange = (newSection: "women" | "men") => {
+    setSection(newSection);
+    const defaultCat = newSection === "men" ? "kurta-sets" : "unstitched";
+    const defaultCare =
+      newSection === "men"
+        ? "Gentle hand wash with mild detergent or dry clean."
+        : "Dry clean or gentle cold hand wash.";
+    const defaultStitching =
+      newSection === "men"
+        ? "Unstitched kurta set fabric ready for custom tailoring."
+        : "Comes with 2.5-inch inner margins for tailoring.";
+    setForm((prev) => ({
+      ...prev,
+      category: defaultCat,
+      fabricCare: defaultCare,
+      stitchingDetails: defaultStitching,
+    }));
+    setIsCreatingSubcategory(false);
+    setNewSubcategoryName("");
+    setSubcategoryError("");
+  };
+
+  const handleCreateSubcategory = async () => {
+    const trimmed = newSubcategoryName.trim();
+    if (!trimmed) {
+      setSubcategoryError("Subcategory name cannot be empty");
+      return;
+    }
+    if (trimmed.length > 50) {
+      setSubcategoryError("Name must be 50 characters or less");
+      return;
+    }
+    const duplicate = subcategories.some((s) => s.name.toLowerCase() === trimmed.toLowerCase());
+    if (duplicate) {
+      setSubcategoryError(`"${trimmed}" already exists in ${section === "men" ? "Men" : "Women"}`);
+      return;
+    }
+
+    setIsSavingSubcategory(true);
+    setSubcategoryError("");
+    try {
+      const res = await adminApi.createSubcategory({ section, name: trimmed });
+      const created = res.subcategory || { name: trimmed };
+      setSubcategories((prev) => [...prev, { id: created.id, name: created.name }]);
+      setForm((prev) => ({ ...prev, subcategory: created.name }));
+      setSelectedSubcategoryId(created.id || null);
+      setNewSubcategoryName("");
+      setIsCreatingSubcategory(false);
+      setSubcategorySuccess(`Created subcategory "${created.name}"`);
+      setTimeout(() => setSubcategorySuccess(""), 4000);
+    } catch {
+      // Offline / migration not run fallback
+      setSubcategories((prev) => [...prev, { name: trimmed }]);
+      setForm((prev) => ({ ...prev, subcategory: trimmed }));
+      setSelectedSubcategoryId(null);
+      setNewSubcategoryName("");
+      setIsCreatingSubcategory(false);
+      setSubcategorySuccess(`Added "${trimmed}"`);
+      setTimeout(() => setSubcategorySuccess(""), 4000);
+    } finally {
+      setIsSavingSubcategory(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -56,6 +180,16 @@ export default function AdminNewProductPage() {
       ...prev,
       [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
+  };
+
+  const handleSubcategorySelect = (subName: string) => {
+    if (subName === "__custom__") {
+      setIsCreatingSubcategory(true);
+      return;
+    }
+    const matched = subcategories.find((s) => s.name === subName);
+    setForm((prev) => ({ ...prev, subcategory: subName }));
+    setSelectedSubcategoryId(matched?.id || null);
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +208,7 @@ export default function AdminNewProductPage() {
   };
 
   const toggleSize = (size: string) => {
-    setSelectedSizes((prev) => prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]);
+    setSelectedSizes((prev) => (prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,7 +217,7 @@ export default function AdminNewProductPage() {
     setIsSubmitting(true);
 
     try {
-      const isUnstitched = form.category === "unstitched";
+      const isUnstitched = form.category === "unstitched" || section === "men";
       const finalSizes = isUnstitched ? [] : selectedSizes;
       const sizeStockMap: Record<string, number> = {};
       let totalStock = 0;
@@ -105,18 +239,18 @@ export default function AdminNewProductPage() {
       const allColorsSoldOut = validColors.length > 0 && validColors.every((c) => c.isSoldOut);
       const isSoldOut = allColorsSoldOut || totalStock <= 0;
 
-      // Step 1: Create product record
-      const finalSubcategory = isCustomSubcategory ? customSubcategory.trim() : form.subcategory;
-      if (isCustomSubcategory && !customSubcategory.trim()) {
-        setError("Please enter a custom subcategory name");
+      if (!form.subcategory.trim()) {
+        setError("Please select or add a subcategory");
         setIsSubmitting(false);
         return;
       }
 
-      const { product } = await adminApi.createProduct({
+      const { product } = (await adminApi.createProduct({
         name: form.name,
         category: form.category,
-        subcategory: finalSubcategory,
+        subcategory: form.subcategory.trim(),
+        section: section,
+        subcategoryId: selectedSubcategoryId || undefined,
         regularPrice: Number(form.regularPrice) || Number(form.discountedPrice),
         discountedPrice: Number(form.discountedPrice),
         isSoldOut,
@@ -140,21 +274,23 @@ export default function AdminNewProductPage() {
           stitchingDetails: form.stitchingDetails,
           shippingReturns: form.shippingReturns,
         },
-      }) as { product: { id: string } };
+      })) as { product: { id: string } };
 
       // Step 2: Upload images if any
       if (imageFiles.length > 0) {
-        const { urls } = await adminApi.uploadImages(product.id, imageFiles) as { urls: string[] };
+        const { urls } = (await adminApi.uploadImages(product.id, imageFiles)) as { urls: string[] };
 
         // Update product with first image as primary
         await adminApi.updateProduct(product.id, {
           primaryImage: urls[0] || "",
           secondaryImage: urls[1] || "",
           galleryImages: urls,
-          colorVariants: colorVariants.filter((c) => c.name).map((c, i) => ({
-            ...c,
-            imageSrc: urls[i] || urls[0] || "",
-          })),
+          colorVariants: colorVariants
+            .filter((c) => c.name)
+            .map((c, i) => ({
+              ...c,
+              imageSrc: urls[i] || urls[0] || "",
+            })),
         });
       }
 
@@ -181,68 +317,126 @@ export default function AdminNewProductPage() {
         {/* Basic Info */}
         <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-4">
           <h2 className="font-semibold text-[#1A1918]">Basic Information</h2>
+
+          {/* Section Selector */}
+          <div>
+            <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">
+              Section *
+            </label>
+            <div className="grid grid-cols-2 gap-3 max-w-xs">
+              <button
+                type="button"
+                onClick={() => handleSectionChange("women")}
+                className={`py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all text-center cursor-pointer ${
+                  section === "women"
+                    ? "bg-[#1A1918] text-white border-[#1A1918] shadow-sm"
+                    : "bg-white text-[#75706B] border-[#EAE5DE] hover:border-[#1A1918]"
+                }`}
+              >
+                Women Collection
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSectionChange("men")}
+                className={`py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all text-center cursor-pointer ${
+                  section === "men"
+                    ? "bg-[#1A1918] text-white border-[#1A1918] shadow-sm"
+                    : "bg-white text-[#75706B] border-[#EAE5DE] hover:border-[#1A1918]"
+                }`}
+              >
+                Men Collection
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">Product Name *</label>
             <input name="name" value={form.name} onChange={handleChange} required
-              placeholder="e.g. Blue Lavish on Black Satin Embroidered Suit"
+              placeholder={section === "men" ? "e.g. Pure Cotton Self Designed Kurta Set" : "e.g. Blue Lavish on Black Satin Embroidered Suit"}
               className="w-full px-3 py-2.5 border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] transition-colors" />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">Category *</label>
               <select name="category" value={form.category} onChange={handleChange}
                 className="w-full px-3 py-2.5 border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] bg-white transition-colors">
-                {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {CATEGORIES_BY_SECTION[section].map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
               </select>
             </div>
+
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-medium text-[#75706B] uppercase tracking-wider">Subcategory *</label>
                 <button
                   type="button"
                   onClick={() => {
-                    const next = !isCustomSubcategory;
-                    setIsCustomSubcategory(next);
-                    if (!next) {
-                      setForm((prev) => ({ ...prev, subcategory: SUBCATEGORIES[0] }));
-                    }
+                    setIsCreatingSubcategory((prev) => !prev);
+                    setSubcategoryError("");
                   }}
                   className="text-xs text-[#C47D5A] hover:underline font-medium cursor-pointer"
                 >
-                  {isCustomSubcategory ? "Choose from list" : "+ Add custom"}
+                  {isCreatingSubcategory ? "Choose from list" : "+ Add new"}
                 </button>
               </div>
-              {isCustomSubcategory ? (
-                <input
-                  type="text"
-                  placeholder="Enter custom subcategory (e.g. PURE COTTON SUITS)"
-                  value={customSubcategory}
-                  onChange={(e) => setCustomSubcategory(e.target.value)}
-                  required
-                  className="w-full px-3 py-2.5 border border-[#C47D5A] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#C47D5A] bg-[#FFFDFC] transition-colors"
-                />
+
+              {isCreatingSubcategory ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="New subcategory name..."
+                      value={newSubcategoryName}
+                      onChange={(e) => setNewSubcategoryName(e.target.value)}
+                      maxLength={50}
+                      className="flex-1 px-3 py-2 border border-[#C47D5A] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#C47D5A] bg-[#FFFDFC]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateSubcategory}
+                      disabled={isSavingSubcategory || !newSubcategoryName.trim()}
+                      className="px-3 py-2 bg-[#C47D5A] hover:bg-[#A86947] text-white rounded-lg text-xs font-semibold disabled:opacity-50 flex items-center gap-1 shrink-0"
+                    >
+                      {isSavingSubcategory ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingSubcategory(false);
+                        setSubcategoryError("");
+                      }}
+                      className="px-2.5 py-2 border border-[#EAE5DE] text-[#75706B] rounded-lg text-xs hover:bg-[#F5F3F0]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {subcategoryError && (
+                    <p className="text-[11px] text-red-600 font-medium">{subcategoryError}</p>
+                  )}
+                </div>
               ) : (
                 <select
                   name="subcategory"
                   value={form.subcategory}
-                  onChange={(e) => {
-                    if (e.target.value === "__custom__") {
-                      setIsCustomSubcategory(true);
-                      setCustomSubcategory("");
-                    } else {
-                      handleChange(e);
-                    }
-                  }}
+                  onChange={(e) => handleSubcategorySelect(e.target.value)}
                   className="w-full px-3 py-2.5 border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] bg-white transition-colors"
                 >
-                  {SUBCATEGORIES.map((sub) => (
-                    <option key={sub} value={sub}>{sub}</option>
+                  {subcategories.map((sub) => (
+                    <option key={sub.id || sub.name} value={sub.name}>
+                      {sub.name}
+                    </option>
                   ))}
-                  <option value="__custom__">+ Custom Subcategory...</option>
+                  <option value="__custom__">+ Add new sub-category...</option>
                 </select>
+              )}
+              {subcategorySuccess && (
+                <p className="text-[11px] text-green-600 font-medium mt-1">{subcategorySuccess}</p>
               )}
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">Regular Price (₹)</label>
@@ -260,7 +454,7 @@ export default function AdminNewProductPage() {
           <div>
             <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">SKU</label>
             <input name="sku" value={form.sku} onChange={handleChange}
-              placeholder="AKIK-ESD-001"
+              placeholder={section === "men" ? "AKIK-MEN-001" : "AKIK-ESD-001"}
               className="w-full px-3 py-2.5 border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] transition-colors" />
           </div>
         </div>
@@ -292,10 +486,12 @@ export default function AdminNewProductPage() {
         {/* Stock & Sizes */}
         <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-4">
           <h2 className="font-semibold text-[#1A1918]">Inventory & Sizes</h2>
-          {form.category === "unstitched" ? (
+          {form.category === "unstitched" || section === "men" ? (
             <div className="space-y-3">
               <p className="text-xs text-[#75706B] bg-[#FAF9F6] p-3 rounded-lg border border-[#EAE5DE]">
-                Unstitched category does not require size variants. Standard full fabric cut.
+                {section === "men"
+                  ? "Men's unstitched kurta set does not require size variants. Standard full unstitched fabric cut."
+                  : "Unstitched category does not require size variants. Standard full fabric cut."}
               </p>
               <div>
                 <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">

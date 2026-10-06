@@ -132,7 +132,10 @@ export default function ProductDetailPage() {
     : 0;
 
   const isUnstitched =
-    product?.category === "unstitched" || !product?.sizes || product.sizes.length === 0;
+    product?.category === "unstitched" ||
+    product?.section === "men" ||
+    !product?.sizes ||
+    product.sizes.length === 0;
 
   // Check stock for current product or selected size
   const getSelectedStock = (): { isOutOfStock: boolean; quantity: number | null } => {
@@ -240,17 +243,33 @@ export default function ProductDetailPage() {
             Home
           </Link>
           <span>/</span>
-          <Link
-            href={`/collections?collection=${product.category}`}
-            className="hover:text-[#1F1E1D] capitalize shrink-0"
-          >
-            {product.category} Collection
-          </Link>
+          {product.section === "men" ? (
+            <>
+              <Link href="/men" className="hover:text-[#1F1E1D] shrink-0">
+                Men
+              </Link>
+              <span>/</span>
+              <Link href="/men/kurta-sets" className="hover:text-[#1F1E1D] shrink-0">
+                Kurta Sets
+              </Link>
+            </>
+          ) : (
+            <Link
+              href={`/collections?collection=${product.category}`}
+              className="hover:text-[#1F1E1D] capitalize shrink-0"
+            >
+              {product.category} Collection
+            </Link>
+          )}
           <span>/</span>
           <Link
-            href={`/collections?collection=${product.category}&sub=${encodeURIComponent(
-              product.subcategory
-            )}`}
+            href={
+              product.section === "men"
+                ? `/men/kurta-sets?sub=${encodeURIComponent(product.subcategory)}`
+                : `/collections?collection=${product.category}&sub=${encodeURIComponent(
+                    product.subcategory
+                  )}`
+            }
             className="hover:text-[#1F1E1D] shrink-0"
           >
             {product.subcategory}
@@ -487,10 +506,12 @@ export default function ProductDetailPage() {
               <div className="p-3.5 rounded-lg bg-[#FAF9F6] border border-[#EAE5DE] text-xs text-[#75706B] flex items-center justify-between">
                 <div>
                   <span className="font-semibold text-[#1F1E1D] block">
-                    Unstitched Fabric Piece
+                    {product.section === "men" ? "Unstitched Kurta Set Fabric" : "Unstitched Fabric Piece"}
                   </span>
                   <span className="text-[11px] text-[#75706B]">
-                    Complete 3-piece fabric cut • No sizing required • Ready for custom tailoring
+                    {product.section === "men"
+                      ? "Complete unstitched kurta fabric set • Standard cut • Ready for bespoke tailoring"
+                      : "Complete 3-piece fabric cut • No sizing required • Ready for custom tailoring"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -500,7 +521,7 @@ export default function ProductDetailPage() {
                     </span>
                   )}
                   <span className="px-2.5 py-1 bg-white border border-[#EAE5DE] text-[10px] font-bold uppercase tracking-wider text-[#C47D5A] rounded shadow-sm">
-                    Free Size Cut
+                    {product.section === "men" ? "Kurta Cut" : "Free Size Cut"}
                   </span>
                 </div>
               </div>

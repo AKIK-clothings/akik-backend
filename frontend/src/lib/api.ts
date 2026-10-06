@@ -15,12 +15,16 @@ const BASE_URL = RAW_API_URL ? RAW_API_URL.replace(/\/$/, "") : "http://localhos
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+import { SubCategoryItem } from "@/types/product";
+
 export interface ApiProduct {
   id: string;
   slug: string;
   name: string;
   category: string;
   subcategory: string;
+  section?: "women" | "men";
+  subcategory_id?: string | null;
   regular_price: number;
   discounted_price: number;
   is_sold_out: boolean;
@@ -83,8 +87,10 @@ export function mapApiProduct(p: ApiProduct) {
     id: p.id,
     slug: p.slug,
     name: p.name,
+    section: p.section || "women",
     category: p.category as never,
     subcategory: p.subcategory,
+    subcategoryId: p.subcategory_id || null,
     regularPrice: p.regular_price,
     discountedPrice: p.discounted_price,
     isSoldOut: p.is_sold_out,
@@ -293,6 +299,22 @@ export const api = {
     }
     return data;
   },
+
+  /** Fetch subcategories optionally filtered by section (cached with 5m stale time) */
+  async getSubcategories(section?: string): Promise<SubCategoryItem[]> {
+    const query = section ? `?section=${encodeURIComponent(section)}` : "";
+    const cacheKey = `public:subcategories:${section || "all"}`;
+    return memoryCache.fetchWithCache(
+      cacheKey,
+      async () => {
+        const res = await fetch(`${BASE_URL}/api/subcategories${query}`);
+        if (!res.ok) throw new Error("Failed to fetch subcategories");
+        const data = await res.json();
+        return (data.subcategories || []) as SubCategoryItem[];
+      },
+      { staleTimeMs: 5 * 60 * 1000 }
+    );
+  },
 };
 
 // ─── Admin API Functions ──────────────────────────────────────────────────────
@@ -385,12 +407,33 @@ export const adminApi = {
       { staleTimeMs: 45 * 1000 }
     ),
 
-  getProducts: () =>
-    memoryCache.fetchWithCache(
-      "admin:products:all",
-      () => adminApi.request<{ products: ApiProduct[] }>("/api/admin/products"),
+  getProducts: (section?: string) => {
+    const query = section ? `?section=${encodeURIComponent(section)}` : "";
+    return memoryCache.fetchWithCache(
+      `admin:products:${section || "all"}`,
+      () => adminApi.request<{ products: ApiProduct[] }>(`/api/admin/products${query}`),
       { staleTimeMs: 2 * 60 * 1000 }
-    ),
+    );
+  },
+
+  getSubcategories: (section?: string) => {
+    const query = section ? `?section=${encodeURIComponent(section)}` : "";
+    return memoryCache.fetchWithCache(
+      `admin:subcategories:${section || "all"}`,
+      () => adminApi.request<{ subcategories: SubCategoryItem[] }>(`/api/admin/subcategories${query}`),
+      { staleTimeMs: 2 * 60 * 1000 }
+    );
+  },
+
+  createSubcategory: async (data: { section: "women" | "men"; name: string }) => {
+    const res = await adminApi.request<{ subcategory: SubCategoryItem }>("/api/admin/subcategories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    memoryCache.invalidate("admin:subcategories");
+    memoryCache.invalidate("public:subcategories");
+    return res;
+  },
 
   getProduct: (id: string) =>
     memoryCache.fetchWithCache(

@@ -22,17 +22,31 @@ export interface ProductVariant {
   images: string[];
 }
 
+export type ProductSection = "women" | "men";
+
 export type MainCategory =
   | "stitched"
   | "unstitched"
-  | "kids";
+  | "kids"
+  | "kurta-sets"
+  | string;
 
 export type SubCategory =
   | "Embroidered Satin with Dupatta"
   | "Luxury Cotton Satin"
   | "Satin Lucknowi Collection"
   | "Rose Royale Collection"
+  | "Premium Cotton Plain"
+  | "Premium Cotton Self Designed"
   | string;
+
+export interface SubCategoryItem {
+  id: string;
+  section: ProductSection;
+  name: string;
+  slug: string;
+  created_at?: string;
+}
 
 export interface ProductAccordionItem {
   title: string;
@@ -43,8 +57,10 @@ export interface Product {
   id: string;
   slug: string;
   name: string;
+  section?: ProductSection;
   category: MainCategory;
   subcategory: SubCategory;
+  subcategoryId?: string | null;
   regularPrice: number;
   discountedPrice: number;
   isSoldOut: boolean;

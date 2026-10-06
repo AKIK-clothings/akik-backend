@@ -150,4 +150,35 @@ export const NAVIGATION_CATEGORIES: MegaMenuCategory[] = [
       tag: "Festive Kids",
     },
   },
+  {
+    id: "men",
+    title: "Men",
+    href: "/men",
+    badge: "New",
+    subcategories: [
+      {
+        title: "All Kurta Sets",
+        href: "/men/kurta-sets",
+        description: "Bespoke unstitched ethnic kurta sets for men",
+      },
+      {
+        title: "Premium Cotton Plain",
+        href: "/men/kurta-sets?sub=Premium+Cotton+Plain",
+        description: "Breathable, sophisticated unstitched pure cotton kurta sets",
+      },
+      {
+        title: "Premium cotton self designed",
+        href: "/men/kurta-sets?sub=Premium+cotton+self+designed",
+        description: "Intricately woven self-textured unstitched cotton kurta fabrics",
+      },
+    ],
+    featuredCard: {
+      title: "Men's Kurta Sets",
+      subtitle: "Unstitched ethnic ensembles in premium breathable cotton",
+      imageSrc: "/images/luxury-cotton-satin/gilded-noir.jpeg",
+      ctaText: "Shop Men",
+      href: "/men",
+      tag: "Unstitched Ethnic",
+    },
+  },
 ];

@@ -39,6 +39,7 @@ function CollectionsContent() {
   const sortParam = (searchParams.get("sort") as SortOption) || "featured";
   const searchParam = searchParams.get("q") || "";
   const wishlistParam = searchParams.get("wishlist") === "true";
+  const sectionParam = searchParams.get("section");
 
   // Helper to push updated query parameters to the URL
   const updateUrlParams = (updater: (params: URLSearchParams) => void) => {
@@ -170,6 +171,13 @@ function CollectionsContent() {
         if (!matchName && !matchSub && !matchDesc) return false;
       }
 
+      // Section filter: legacy collections page shows women unless section=men specified
+      if (sectionParam) {
+        if ((product.section || "women") !== sectionParam.toLowerCase()) return false;
+      } else {
+        if (product.section === "men") return false;
+      }
+
       // Collection
       if (collectionParam !== "all" && product.category !== collectionParam) {
         return false;
@@ -235,6 +243,7 @@ function CollectionsContent() {
     maxPriceParam,
     sortParam,
     searchParam,
+    sectionParam,
   ]);
 
   const activeCollectionTitle =

@@ -20,13 +20,20 @@ const router = Router();
 router.use(requireAdmin);
 
 // ─── GET /api/admin/products ─────────────────────────────────────────────────
-// List ALL products (including inactive) for admin management
-router.get("/", async (_req: Request, res: Response): Promise<void> => {
+// List ALL products (including inactive) for admin management with optional section filter
+router.get("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { data: products, error } = await supabase
+    const { section } = req.query;
+    let query = supabase
       .from("products")
       .select("*")
       .order("created_at", { ascending: false });
+
+    if (section && typeof section === "string" && section.toLowerCase() !== "all") {
+      query = query.eq("section", section.toLowerCase().trim());
+    }
+
+    const { data: products, error } = await query;
 
     if (error) throw error;
     res.json({ products: products || [], total: products?.length || 0 });
@@ -83,6 +90,8 @@ router.post(
           name: body.name,
           category: body.category,
           subcategory: body.subcategory,
+          section: body.section || "women",
+          subcategory_id: body.subcategoryId || null,
           regular_price: body.regularPrice || body.discountedPrice,
           discounted_price: body.discountedPrice,
           is_sold_out: isSoldOut,
@@ -198,6 +207,8 @@ router.put(
         isFeatured: "is_featured",
         accordions: "accordions",
         isActive: "is_active",
+        section: "section",
+        subcategoryId: "subcategory_id",
       };
 
       for (const [jsKey, dbCol] of Object.entries(fieldMap)) {

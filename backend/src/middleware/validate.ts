@@ -122,6 +122,8 @@ export const adminProductCreateSchema = z.object({
   sizeStockMap: z.record(z.string(), z.union([z.boolean(), z.number()])).optional().default({}),
   colorVariants: z.array(z.any()).optional().default([]),
   accordions: z.record(z.string(), z.any()).optional().default({}),
+  section: z.enum(["women", "men"]).optional().default("women"),
+  subcategoryId: z.string().uuid().optional().nullable(),
   isNewArrival: z.boolean().optional().default(false),
   isBestSeller: z.boolean().optional().default(false),
   isFeatured: z.boolean().optional().default(false),
@@ -130,6 +132,13 @@ export const adminProductCreateSchema = z.object({
 });
 
 export const adminProductUpdateSchema = adminProductCreateSchema.partial();
+
+// ─── Subcategory Schemas ───────────────────────────────────────────────────────
+
+export const subcategoryCreateSchema = z.object({
+  section: z.enum(["women", "men"], { message: "Section must be 'women' or 'men'" }),
+  name: z.string().trim().min(1, "Name is required").max(100, "Name too long"),
+});
 
 // ─── Admin Promo Schemas (HIGH-07) ─────────────────────────────────────────────
 

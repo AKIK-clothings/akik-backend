@@ -5,6 +5,8 @@ import { ALL_COLORS } from "@/data/mockProducts";
 import { ApparelSize } from "@/types/product";
 
 interface FilterContentProps {
+  section?: "women" | "men";
+  subcategoriesList?: string[];
   selectedCollection: string;
   onSelectCollection: (col: string) => void;
   selectedSubcategories: string[];
@@ -29,9 +31,16 @@ const SHARED_SUBCATEGORIES = [
   "PURE COTTON SUITS",
 ];
 
+const MEN_DEFAULT_SUBCATEGORIES = [
+  "Premium Cotton Plain",
+  "Premium cotton self designed",
+];
+
 const ALL_SIZES: ApparelSize[] = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
 export const FilterContent: React.FC<FilterContentProps> = ({
+  section = "women",
+  subcategoriesList,
   selectedCollection,
   onSelectCollection,
   selectedSubcategories,
@@ -47,7 +56,25 @@ export const FilterContent: React.FC<FilterContentProps> = ({
   onResetFilters,
   hasActiveFilters,
 }) => {
-  const availableSubs = SHARED_SUBCATEGORIES;
+  const availableSubs =
+    subcategoriesList && subcategoriesList.length > 0
+      ? subcategoriesList
+      : section === "men"
+      ? MEN_DEFAULT_SUBCATEGORIES
+      : SHARED_SUBCATEGORIES;
+
+  const collectionOptions =
+    section === "men"
+      ? [
+          { id: "all", label: "All Men's" },
+          { id: "kurta-sets", label: "Kurta Sets" },
+        ]
+      : [
+          { id: "all", label: "All Collections" },
+          { id: "stitched", label: "Stitched" },
+          { id: "unstitched", label: "Unstitched" },
+          { id: "kids", label: "Kids" },
+        ];
 
   return (
     <div className="space-y-6 text-sm font-sans text-[#1F1E1D]">
@@ -70,15 +97,10 @@ export const FilterContent: React.FC<FilterContentProps> = ({
       {/* 1. Main Collection Filter */}
       <div>
         <h4 className="text-xs font-bold uppercase tracking-wider text-[#75706B] mb-2.5">
-          Collection
+          {section === "men" ? "Category" : "Collection"}
         </h4>
         <div className="flex flex-col gap-1.5">
-          {[
-            { id: "all", label: "All Collections" },
-            { id: "stitched", label: "Stitched" },
-            { id: "unstitched", label: "Unstitched" },
-            { id: "kids", label: "Kids" },
-          ].map((col) => (
+          {collectionOptions.map((col) => (
             <label
               key={col.id}
               className="flex items-center gap-2 cursor-pointer text-xs hover:text-[#C47D5A] transition-colors"
@@ -130,8 +152,8 @@ export const FilterContent: React.FC<FilterContentProps> = ({
         </div>
       </div>
 
-      {/* 3. Size Filter (Hidden if unstitched selected) */}
-      {selectedCollection !== "unstitched" && (
+      {/* 3. Size Filter (Hidden if unstitched selected or men section) */}
+      {section !== "men" && selectedCollection !== "unstitched" && (
         <div className="pt-3 border-t border-[#EAE5DE]">
           <h4 className="text-xs font-bold uppercase tracking-wider text-[#75706B] mb-2.5">
             Size

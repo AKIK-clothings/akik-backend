@@ -12,6 +12,7 @@ export default function AdminProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sectionFilter, setSectionFilter] = useState<"all" | "women" | "men">("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -19,10 +20,22 @@ export default function AdminProductsPage() {
   }, []);
 
   useEffect(() => {
-    if (!search) { setFiltered(products); return; }
-    const q = search.toLowerCase();
-    setFiltered(products.filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q)));
-  }, [search, products]);
+    let result = products;
+    if (sectionFilter !== "all") {
+      result = result.filter((p) => (p.section || "women") === sectionFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          (p.subcategory && p.subcategory.toLowerCase().includes(q)) ||
+          p.sku?.toLowerCase().includes(q)
+      );
+    }
+    setFiltered(result);
+  }, [search, sectionFilter, products]);
 
   const loadProducts = async () => {
     setIsLoading(true);
@@ -60,10 +73,14 @@ export default function AdminProductsPage() {
     "stitched": "Stitched",
     "unstitched": "Unstitched",
     "kids": "Kids",
+    "kurta-sets": "Kurta Sets",
     "embroidered-satin": "Embroidered Satin",
     "luxury-cotton-satin": "Luxury Cotton Satin",
     "satin-lucknowi": "Satin Lucknowi",
   };
+
+  const womenCount = products.filter((p) => (p.section || "women") === "women").length;
+  const menCount = products.filter((p) => p.section === "men").length;
 
   return (
     <div className="space-y-6">
@@ -92,16 +109,51 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A8A49F]" />
-        <input
-          type="text"
-          placeholder="Search by name, category, or SKU..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] transition-colors"
-        />
+      {/* Filter Tabs & Search */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 border-b border-[#EAE5DE] pb-2">
+          <button
+            onClick={() => setSectionFilter("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              sectionFilter === "all"
+                ? "bg-[#1A1918] text-white"
+                : "text-[#75706B] hover:text-[#1A1918] hover:bg-[#F5F3F0]"
+            }`}
+          >
+            All Products ({products.length})
+          </button>
+          <button
+            onClick={() => setSectionFilter("women")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              sectionFilter === "women"
+                ? "bg-[#1A1918] text-white"
+                : "text-[#75706B] hover:text-[#1A1918] hover:bg-[#F5F3F0]"
+            }`}
+          >
+            Women ({womenCount})
+          </button>
+          <button
+            onClick={() => setSectionFilter("men")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              sectionFilter === "men"
+                ? "bg-[#1A1918] text-white"
+                : "text-[#75706B] hover:text-[#1A1918] hover:bg-[#F5F3F0]"
+            }`}
+          >
+            Men ({menCount})
+          </button>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A8A49F]" />
+          <input
+            type="text"
+            placeholder="Search by name, category, subcategory, or SKU..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] transition-colors"
+          />
+        </div>
       </div>
 
       {/* Table */}
@@ -116,7 +168,7 @@ export default function AdminProductsPage() {
               <thead className="bg-[#F5F3F0] border-b border-[#EAE5DE]">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-[#75706B] uppercase tracking-wider">Product</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#75706B] uppercase tracking-wider hidden md:table-cell">Category</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#75706B] uppercase tracking-wider hidden md:table-cell">Section / Category</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-[#75706B] uppercase tracking-wider">Price</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-[#75706B] uppercase tracking-wider hidden sm:table-cell">Stock</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-[#75706B] uppercase tracking-wider">Status</th>
@@ -142,7 +194,27 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
-                      <span className="text-xs text-[#75706B]">{CATEGORY_LABELS[product.category] || product.category}</span>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                              product.section === "men"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-purple-100 text-purple-800"
+                            }`}
+                          >
+                            {product.section === "men" ? "Men" : "Women"}
+                          </span>
+                          <span className="text-xs font-medium text-[#1A1918]">
+                            {CATEGORY_LABELS[product.category] || product.category}
+                          </span>
+                        </div>
+                        {product.subcategory && (
+                          <span className="text-[11px] text-[#75706B] truncate max-w-[150px]" title={product.subcategory}>
+                            {product.subcategory}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-[#1A1918]">₹{product.discounted_price.toLocaleString("en-IN")}</p>

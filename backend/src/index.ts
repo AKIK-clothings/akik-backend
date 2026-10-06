@@ -19,6 +19,8 @@ import adminProductsRouter from "./routes/admin/products";
 import adminOrdersRouter from "./routes/admin/orders";
 import adminPromosRouter from "./routes/admin/promos";
 import adminEnquiriesRouter from "./routes/admin/enquiries";
+import subcategoriesRouter from "./routes/subcategories";
+import adminSubcategoriesRouter from "./routes/admin/subcategories";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -123,6 +125,7 @@ app.get("/health", async (_req, res) => {
 
 // ─── Public Routes ────────────────────────────────────────────────────────────
 app.use("/api/products", productsRouter);
+app.use("/api/subcategories", subcategoriesRouter);
 app.use("/api/promos", promosRouter);
 app.use("/api/enquiries", enquiriesRouter);
 app.use("/api/checkout", checkoutRouter);
@@ -130,6 +133,7 @@ app.use("/api/checkout", checkoutRouter);
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 app.use("/api/admin", adminAuthRouter);
 app.use("/api/admin/products", adminProductsRouter);
+app.use("/api/admin/subcategories", adminSubcategoriesRouter);
 app.use("/api/admin/orders", adminOrdersRouter);
 app.use("/api/admin/promos", adminPromosRouter);
 app.use("/api/admin/enquiries", adminEnquiriesRouter);
