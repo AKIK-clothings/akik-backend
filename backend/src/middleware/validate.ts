@@ -123,7 +123,7 @@ export const adminProductCreateSchema = z.object({
   colorVariants: z.array(z.any()).optional().default([]),
   accordions: z.record(z.string(), z.any()).optional().default({}),
   section: z.enum(["women", "men"]).optional().default("women"),
-  subcategoryId: z.string().uuid().optional().nullable(),
+  subcategoryId: z.union([z.string().uuid(), z.literal(""), z.null()]).optional().transform((v) => (v === "" ? null : v)),
   isNewArrival: z.boolean().optional().default(false),
   isBestSeller: z.boolean().optional().default(false),
   isFeatured: z.boolean().optional().default(false),
@@ -131,7 +131,12 @@ export const adminProductCreateSchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
-export const adminProductUpdateSchema = adminProductCreateSchema.partial();
+export const adminProductUpdateSchema = adminProductCreateSchema
+  .partial()
+  .extend({
+    section: z.enum(["women", "men"]).optional(),
+    subcategoryId: z.union([z.string().uuid(), z.literal(""), z.null()]).optional().transform((v) => (v === "" ? null : v)),
+  });
 
 // ─── Subcategory Schemas ───────────────────────────────────────────────────────
 

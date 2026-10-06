@@ -30,6 +30,7 @@ const DEFAULT_SUBCATEGORIES: Record<"women" | "men", string[]> = {
     "PURE COTTON SUITS",
   ],
   men: [
+    "Kurta Sets",
     "Premium Cotton Plain",
     "Premium cotton self designed",
   ],

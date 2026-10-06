@@ -368,15 +368,34 @@ export const adminApi = {
       typeof window !== "undefined"
         ? sessionStorage.getItem("akik_admin_token")
         : null;
-    const res = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(options.headers || {}),
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}${path}`, {
+        ...options,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(options.headers || {}),
+        },
+      });
+    } catch {
+      // 1-shot retry for cold-start server wakeup
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        res = await fetch(`${BASE_URL}${path}`, {
+          ...options,
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(options.headers || {}),
+          },
+        });
+      } catch {
+        throw new Error(`Unable to connect to server (${BASE_URL}). Please check network or try again in a moment.`);
+      }
+    }
     if (res.status === 401) {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("akik_admin_token");
@@ -475,12 +494,17 @@ export const adminApi = {
         : null;
     const formData = new FormData();
     files.forEach((f) => formData.append("images", f));
-    const res = await fetch(`${BASE_URL}/api/admin/products/${productId}/images`, {
-      method: "POST",
-      credentials: "include",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/api/admin/products/${productId}/images`, {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+    } catch {
+      throw new Error(`Image upload network error (${BASE_URL}). Please verify image file sizes and network.`);
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: "Image upload failed" }));
       throw new Error(err.error || "Image upload failed");

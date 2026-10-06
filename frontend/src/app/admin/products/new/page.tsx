@@ -25,6 +25,7 @@ const DEFAULT_SUBCATEGORIES: Record<"women" | "men", string[]> = {
     "PURE COTTON SUITS",
   ],
   men: [
+    "Kurta Sets",
     "Premium Cotton Plain",
     "Premium cotton self designed",
   ],
@@ -121,12 +122,15 @@ export default function AdminNewProductPage() {
       newSection === "men"
         ? "Unstitched kurta set fabric ready for custom tailoring."
         : "Comes with 2.5-inch inner margins for tailoring.";
+    const defaultSub = DEFAULT_SUBCATEGORIES[newSection][0];
     setForm((prev) => ({
       ...prev,
       category: defaultCat,
+      subcategory: defaultSub,
       fabricCare: defaultCare,
       stitchingDetails: defaultStitching,
     }));
+    setSelectedSubcategoryId(null);
     setIsCreatingSubcategory(false);
     setNewSubcategoryName("");
     setSubcategoryError("");
@@ -280,8 +284,9 @@ export default function AdminNewProductPage() {
       if (imageFiles.length > 0) {
         const { urls } = (await adminApi.uploadImages(product.id, imageFiles)) as { urls: string[] };
 
-        // Update product with first image as primary
+        // Update product with first image as primary, retaining section
         await adminApi.updateProduct(product.id, {
+          section,
           primaryImage: urls[0] || "",
           secondaryImage: urls[1] || "",
           galleryImages: urls,
