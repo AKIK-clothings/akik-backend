@@ -175,7 +175,7 @@ export const NAVIGATION_CATEGORIES: MegaMenuCategory[] = [
     featuredCard: {
       title: "Men's Kurta Sets",
       subtitle: "Unstitched ethnic ensembles in premium breathable cotton",
-      imageSrc: "/images/luxury-cotton-satin/gilded-noir.jpeg",
+      imageSrc: "/images/men/men-kurta-set.jpg",
       ctaText: "Shop Men",
       href: "/men",
       tag: "Unstitched Ethnic",

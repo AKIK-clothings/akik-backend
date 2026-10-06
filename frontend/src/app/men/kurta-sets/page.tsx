@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Men's Kurta Sets | AKIK by Hafsa Khatri",
     description: "Shop Men's unstitched Kurta Sets in Premium Cotton Plain and Self Designed textures.",
+    images: ["/images/men/men-kurta-set.jpg"],
   },
 };
 
