@@ -54,8 +54,19 @@ async function calculateAuthoritativeTotals(rawItems, requestedPromoCode) {
         if (!product.is_active) {
             throw new Error(`Product "${product.name}" is no longer available`);
         }
-        if (product.is_sold_out) {
+        const productVariants = Array.isArray(product.color_variants) ? product.color_variants : [];
+        const allColorsSoldOut = productVariants.length > 0 &&
+            productVariants.every((cv) => cv.isSoldOut === true);
+        if (product.is_sold_out || allColorsSoldOut) {
             throw new Error(`Product "${product.name}" is sold out`);
+        }
+        // Check specific selected color variant sold-out status
+        const requestedColorName = item.selectedColor?.name?.trim().toLowerCase();
+        if (requestedColorName && productVariants.length > 0) {
+            const matchingVariant = productVariants.find((cv) => cv.name?.trim().toLowerCase() === requestedColorName);
+            if (matchingVariant && matchingVariant.isSoldOut === true) {
+                throw new Error(`Color "${matchingVariant.name}" for "${product.name}" is sold out`);
+            }
         }
         const unitPrice = product.discounted_price;
         const lineTotal = unitPrice * item.quantity;
@@ -207,16 +218,52 @@ router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.valid
         // ── Idempotency Check (HIGH-21) ──────────────────────────────────────────
         const { data: existingOrder } = await supabase_1.supabase
             .from("orders")
-            .select("id, order_number")
+            .select("id, order_number, customer_name, address_line1, final_total, shipping_fee, promo_code, coupon_discount")
             .eq("razorpay_order_id", razorpayOrderId)
             .maybeSingle();
         if (existingOrder) {
+            // Address string
+            const addressParts = [
+                customer.addressLine1,
+                customer.addressLine2,
+                customer.city,
+                customer.state,
+                customer.pinCode,
+            ].filter(Boolean);
+            const fullAddress = addressParts.join(", ");
+            // Reconcile placeholder customer data if webhook created order first
+            if (existingOrder.customer_name === "Customer" ||
+                existingOrder.address_line1?.includes("Captured via Razorpay Webhook")) {
+                await supabase_1.supabase
+                    .from("orders")
+                    .update({
+                    customer_name: customer.name,
+                    customer_phone: customer.phone,
+                    customer_email: customer.email || null,
+                    address_line1: customer.addressLine1,
+                    address_line2: customer.addressLine2 || null,
+                    city: customer.city,
+                    state: customer.state,
+                    pin_code: customer.pinCode,
+                    delivery_notes: customer.deliveryNotes || null,
+                    notes: "Order details updated via customer checkout completion.",
+                    updated_at: new Date().toISOString(),
+                })
+                    .eq("id", existingOrder.id);
+            }
             // Ensure order_items exist in case webhook created parent order first
             const { data: existingItems } = await supabase_1.supabase
                 .from("order_items")
                 .select("id")
                 .eq("order_id", existingOrder.id)
                 .limit(1);
+            let verifiedItemsForReceipt = items.map((item) => ({
+                name: item.name || "Boutique Ensemble",
+                selectedSize: item.selectedSize,
+                selectedColor: item.selectedColor.name,
+                quantity: item.quantity,
+                unitPrice: 0,
+            }));
             if (!existingItems || existingItems.length === 0) {
                 try {
                     const verified = await calculateAuthoritativeTotals(items, promoCode);
@@ -231,20 +278,63 @@ router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.valid
                         line_total: item.lineTotal,
                     }));
                     await supabase_1.supabase.from("order_items").insert(orderItems);
+                    verifiedItemsForReceipt = verified.verifiedItems.map((item) => ({
+                        name: item.name,
+                        selectedSize: item.selectedSize,
+                        selectedColor: item.selectedColor.name,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                    }));
                 }
                 catch (itemErr) {
                     console.warn("Backfilling order items for existing order failed:", itemErr);
                 }
             }
+            const customerWhatsAppUrl = (0, whatsapp_1.buildCustomerWhatsAppMessage)({
+                orderNumber: existingOrder.order_number,
+                customerName: customer.name,
+                customerPhone: customer.phone,
+                address: fullAddress,
+                items: verifiedItemsForReceipt,
+                finalTotal: existingOrder.final_total || 0,
+                shippingFee: existingOrder.shipping_fee || 0,
+                promoCode: existingOrder.promo_code || undefined,
+                couponDiscount: existingOrder.coupon_discount || 0,
+            });
             res.json({
                 success: true,
                 orderNumber: existingOrder.order_number,
+                customerWhatsAppUrl,
                 message: "Order already processed successfully.",
             });
             return;
         }
         // ── Server-side authoritative total recalculation (SEC-01) ───────────────
         const verified = await calculateAuthoritativeTotals(items, promoCode);
+        // ── Atomic Promo Verification & Lock (SEC-09) ─────────────────────────────
+        let promoAppliedAtomically = false;
+        if (verified.appliedPromoCode) {
+            try {
+                const { data: promoResult, error: rpcErr } = await supabase_1.supabase.rpc("apply_promo_atomic", {
+                    p_code: verified.appliedPromoCode,
+                    p_subtotal: verified.subtotal,
+                });
+                if (!rpcErr && promoResult && Array.isArray(promoResult) && promoResult.length > 0) {
+                    if (promoResult[0].success) {
+                        promoAppliedAtomically = true;
+                    }
+                    else {
+                        console.warn("Atomic promo validation rejected code:", promoResult[0].message);
+                        verified.couponDiscount = 0;
+                        verified.appliedPromoCode = undefined;
+                        verified.finalTotal = Math.max(0, verified.subtotal + verified.shippingFee);
+                    }
+                }
+            }
+            catch (rpcEx) {
+                console.warn("Atomic promo check RPC failed, proceeding with verified totals:", rpcEx);
+            }
+        }
         // ── Build address string ──────────────────────────────────────────────────
         const addressParts = [
             customer.addressLine1,
@@ -305,23 +395,15 @@ router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.valid
             await supabase_1.supabase.from("orders").delete().eq("id", order.id);
             throw itemsError;
         }
-        // ── Atomic Promo increment (SEC-09) ───────────────────────────────────────
-        if (verified.appliedPromoCode) {
+        // ── Fallback promo usage increment if atomic RPC was bypassed ────────────
+        if (verified.appliedPromoCode && !promoAppliedAtomically) {
             try {
-                const { error: rpcErr } = await supabase_1.supabase.rpc("apply_promo_atomic", {
-                    p_code: verified.appliedPromoCode,
-                    p_subtotal: verified.subtotal,
-                });
-                if (rpcErr) {
-                    await supabase_1.supabase.rpc("increment_promo_usage", {
-                        promo_code: verified.appliedPromoCode,
-                    });
-                }
-            }
-            catch {
                 await supabase_1.supabase.rpc("increment_promo_usage", {
                     promo_code: verified.appliedPromoCode,
                 });
+            }
+            catch (incErr) {
+                console.warn("Failed fallback promo increment:", incErr);
             }
         }
         // Mark WhatsApp as notified internally

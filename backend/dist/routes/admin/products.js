@@ -12,17 +12,23 @@ const sharp_1 = __importDefault(require("sharp"));
 const client_s3_1 = require("@aws-sdk/client-s3");
 const r2_1 = require("../../config/r2");
 const validate_1 = require("../../middleware/validate");
+const products_1 = require("../products");
 const router = (0, express_1.Router)();
 // All routes in this file require admin authentication
 router.use(auth_1.requireAdmin);
 // ─── GET /api/admin/products ─────────────────────────────────────────────────
-// List ALL products (including inactive) for admin management
-router.get("/", async (_req, res) => {
+// List ALL products (including inactive) for admin management with optional section filter
+router.get("/", async (req, res) => {
     try {
-        const { data: products, error } = await supabase_1.supabase
+        const { section } = req.query;
+        let query = supabase_1.supabase
             .from("products")
             .select("*")
             .order("created_at", { ascending: false });
+        if (section && typeof section === "string" && section.toLowerCase() !== "all") {
+            query = query.eq("section", section.toLowerCase().trim());
+        }
+        const { data: products, error } = await query;
         if (error)
             throw error;
         res.json({ products: products || [], total: products?.length || 0 });
@@ -61,6 +67,9 @@ router.post("/", (0, validate_1.validateBody)(validate_1.adminProductCreateSchem
                 return;
             }
         }
+        const cvList = Array.isArray(body.colorVariants) ? body.colorVariants : [];
+        const allColorsSoldOut = cvList.length > 0 && cvList.every((cv) => cv.isSoldOut === true);
+        const isSoldOut = body.isSoldOut !== undefined ? (body.isSoldOut || allColorsSoldOut) : allColorsSoldOut;
         const { data: product, error } = await supabase_1.supabase
             .from("products")
             .insert({
@@ -68,9 +77,11 @@ router.post("/", (0, validate_1.validateBody)(validate_1.adminProductCreateSchem
             name: body.name,
             category: body.category,
             subcategory: body.subcategory,
+            section: body.section || "women",
+            subcategory_id: body.subcategoryId || null,
             regular_price: body.regularPrice || body.discountedPrice,
             discounted_price: body.discountedPrice,
-            is_sold_out: body.isSoldOut || false,
+            is_sold_out: isSoldOut,
             sizes: body.sizes || [],
             size_stock_map: body.sizeStockMap || {},
             color_variants: body.colorVariants || [],
@@ -93,6 +104,7 @@ router.post("/", (0, validate_1.validateBody)(validate_1.adminProductCreateSchem
             .single();
         if (error)
             throw error;
+        (0, products_1.invalidateFeaturedCache)();
         res.status(201).json({ product });
     }
     catch (err) {
@@ -171,10 +183,18 @@ router.put("/:id", (0, validate_1.validateUuidParam)("id"), (0, validate_1.valid
             isFeatured: "is_featured",
             accordions: "accordions",
             isActive: "is_active",
+            section: "section",
+            subcategoryId: "subcategory_id",
         };
         for (const [jsKey, dbCol] of Object.entries(fieldMap)) {
             if (body[jsKey] !== undefined) {
                 updateData[dbCol] = body[jsKey];
+            }
+        }
+        if (Array.isArray(body.colorVariants) && body.colorVariants.length > 0) {
+            const allColorsSold = body.colorVariants.every((cv) => cv.isSoldOut === true);
+            if (body.isSoldOut === undefined) {
+                updateData["is_sold_out"] = allColorsSold;
             }
         }
         const { data: product, error } = await supabase_1.supabase
@@ -185,6 +205,7 @@ router.put("/:id", (0, validate_1.validateUuidParam)("id"), (0, validate_1.valid
             .single();
         if (error)
             throw error;
+        (0, products_1.invalidateFeaturedCache)();
         res.json({ product });
     }
     catch (err) {
@@ -204,6 +225,7 @@ router.delete("/:id", (0, validate_1.validateUuidParam)("id"), async (req, res) 
         const { error } = await supabase_1.supabase.from("products").delete().eq("id", id);
         if (error)
             throw error;
+        (0, products_1.invalidateFeaturedCache)();
         res.json({ success: true, message: "Product deleted successfully" });
     }
     catch (err) {
@@ -229,6 +251,7 @@ router.patch("/:id/stock", (0, validate_1.validateUuidParam)("id"), async (req, 
             .single();
         if (error)
             throw error;
+        (0, products_1.invalidateFeaturedCache)();
         res.json({ product });
     }
     catch (err) {

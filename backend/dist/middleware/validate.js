@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.adminEnquiryUpdateSchema = exports.adminOrderStatusSchema = exports.adminPromoUpdateSchema = exports.adminPromoCreateSchema = exports.adminProductUpdateSchema = exports.adminProductCreateSchema = exports.enquirySubmitSchema = exports.promoValidateSchema = exports.adminLoginSchema = exports.checkoutVerifyPaymentSchema = exports.customerAddressSchema = exports.checkoutCreateOrderSchema = exports.checkoutItemSchema = exports.validateUuidParam = exports.validateBody = void 0;
+exports.adminEnquiryUpdateSchema = exports.adminOrderStatusSchema = exports.adminPromoUpdateSchema = exports.adminPromoCreateSchema = exports.subcategoryCreateSchema = exports.adminProductUpdateSchema = exports.adminProductCreateSchema = exports.enquirySubmitSchema = exports.promoValidateSchema = exports.adminLoginSchema = exports.checkoutVerifyPaymentSchema = exports.customerAddressSchema = exports.checkoutCreateOrderSchema = exports.checkoutItemSchema = exports.validateUuidParam = exports.validateBody = void 0;
 const zod_1 = require("zod");
 const validateBody = (schema) => async (req, res, next) => {
     try {
@@ -107,13 +107,25 @@ exports.adminProductCreateSchema = zod_1.z.object({
     sizeStockMap: zod_1.z.record(zod_1.z.string(), zod_1.z.union([zod_1.z.boolean(), zod_1.z.number()])).optional().default({}),
     colorVariants: zod_1.z.array(zod_1.z.any()).optional().default([]),
     accordions: zod_1.z.record(zod_1.z.string(), zod_1.z.any()).optional().default({}),
+    section: zod_1.z.enum(["women", "men"]).optional().default("women"),
+    subcategoryId: zod_1.z.union([zod_1.z.string().uuid(), zod_1.z.literal(""), zod_1.z.null()]).optional().transform((v) => (v === "" ? null : v)),
     isNewArrival: zod_1.z.boolean().optional().default(false),
     isBestSeller: zod_1.z.boolean().optional().default(false),
     isFeatured: zod_1.z.boolean().optional().default(false),
     isSoldOut: zod_1.z.boolean().optional().default(false),
     isActive: zod_1.z.boolean().optional().default(true),
 });
-exports.adminProductUpdateSchema = exports.adminProductCreateSchema.partial();
+exports.adminProductUpdateSchema = exports.adminProductCreateSchema
+    .partial()
+    .extend({
+    section: zod_1.z.enum(["women", "men"]).optional(),
+    subcategoryId: zod_1.z.union([zod_1.z.string().uuid(), zod_1.z.literal(""), zod_1.z.null()]).optional().transform((v) => (v === "" ? null : v)),
+});
+// ─── Subcategory Schemas ───────────────────────────────────────────────────────
+exports.subcategoryCreateSchema = zod_1.z.object({
+    section: zod_1.z.enum(["women", "men"], { message: "Section must be 'women' or 'men'" }),
+    name: zod_1.z.string().trim().min(1, "Name is required").max(100, "Name too long"),
+});
 // ─── Admin Promo Schemas (HIGH-07) ─────────────────────────────────────────────
 exports.adminPromoCreateSchema = zod_1.z.object({
     code: zod_1.z.string().trim().min(1, "Code is required").max(50),

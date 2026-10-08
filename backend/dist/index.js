@@ -22,6 +22,8 @@ const products_2 = __importDefault(require("./routes/admin/products"));
 const orders_1 = __importDefault(require("./routes/admin/orders"));
 const promos_2 = __importDefault(require("./routes/admin/promos"));
 const enquiries_2 = __importDefault(require("./routes/admin/enquiries"));
+const subcategories_1 = __importDefault(require("./routes/subcategories"));
+const subcategories_2 = __importDefault(require("./routes/admin/subcategories"));
 const app = (0, express_1.default)();
 app.set("trust proxy", 1);
 const PORT = Number(process.env.PORT) || 5000;
@@ -112,12 +114,14 @@ app.get("/health", async (_req, res) => {
 });
 // ─── Public Routes ────────────────────────────────────────────────────────────
 app.use("/api/products", products_1.default);
+app.use("/api/subcategories", subcategories_1.default);
 app.use("/api/promos", promos_1.default);
 app.use("/api/enquiries", enquiries_1.default);
 app.use("/api/checkout", checkout_1.default);
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 app.use("/api/admin", auth_1.default);
 app.use("/api/admin/products", products_2.default);
+app.use("/api/admin/subcategories", subcategories_2.default);
 app.use("/api/admin/orders", orders_1.default);
 app.use("/api/admin/promos", promos_2.default);
 app.use("/api/admin/enquiries", enquiries_2.default);

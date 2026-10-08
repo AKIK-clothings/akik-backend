@@ -24,8 +24,33 @@ interface Order {
   status: string;
   payment_status: string;
   created_at: string;
-  order_items: Array<{ product_name: string; quantity: number; selected_size: string; unit_price: number }>;
+  order_items: OrderItem[];
 }
+
+interface OrderItem {
+  product_name: string;
+  quantity: number;
+  selected_size: string;
+  unit_price: number;
+  selected_color?: {
+    name?: string;
+    hexCode?: string;
+    imageSrc?: string;
+  } | string;
+}
+
+const getColorInfo = (color?: OrderItem["selected_color"]) => {
+  if (!color) return null;
+  if (typeof color === "string") {
+    const trimmed = color.trim();
+    return trimmed ? { name: trimmed, hexCode: undefined } : null;
+  }
+  if (typeof color === "object" && color.name) {
+    const trimmed = String(color.name).trim();
+    return trimmed ? { name: trimmed, hexCode: color.hexCode } : null;
+  }
+  return null;
+};
 
 const STATUS_OPTIONS = ["new", "confirmed", "dispatched", "delivered", "cancelled"];
 
@@ -252,13 +277,29 @@ export default function AdminOrdersPage() {
 
                       {/* Items compact */}
                       {order.order_items?.length > 0 && (
-                        <div className="mt-1.5 space-y-0.5">
-                          {order.order_items.map((item, i) => (
-                            <p key={i} className="text-xs text-[#75706B]">
-                              {item.product_name} — {item.selected_size} × {item.quantity}
-                              {item.unit_price ? ` @ ₹${item.unit_price.toLocaleString("en-IN")}` : ""}
-                            </p>
-                          ))}
+                        <div className="mt-1.5 space-y-1">
+                          {order.order_items.map((item, i) => {
+                            const color = getColorInfo(item.selected_color);
+                            return (
+                              <div key={i} className="text-xs text-[#75706B] flex items-center flex-wrap gap-1.5">
+                                <span className="font-medium text-[#1A1918]">{item.product_name}</span>
+                                <span>—</span>
+                                {color && (
+                                  <span className="inline-flex items-center gap-1 font-medium text-[#1A1918] bg-[#F5F3F0] px-1.5 py-0.5 rounded border border-[#EAE5DE] text-[11px]">
+                                    {color.hexCode && (
+                                      <span
+                                        className="w-2.5 h-2.5 rounded-full border border-black/10 inline-block shrink-0"
+                                        style={{ backgroundColor: color.hexCode }}
+                                      />
+                                    )}
+                                    <span>Color: {color.name}</span>
+                                  </span>
+                                )}
+                                <span>{item.selected_size} × {item.quantity}</span>
+                                {item.unit_price ? <span>@ ₹{item.unit_price.toLocaleString("en-IN")}</span> : null}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -364,20 +405,42 @@ export default function AdminOrdersPage() {
 
                         {/* Items detail */}
                         {order.order_items?.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-[#EAE5DE] space-y-1">
+                          <div className="mt-3 pt-3 border-t border-[#EAE5DE] space-y-2">
                             <p className="font-semibold text-[#1A1918] uppercase tracking-wider text-[10px]">
                               Items
                             </p>
-                            {order.order_items.map((item, i) => (
-                              <div key={i} className="flex justify-between text-[#75706B]">
-                                <span>
-                                  {item.product_name} ({item.selected_size}) × {item.quantity}
-                                </span>
-                                {item.unit_price && (
-                                  <span>₹{(item.unit_price * item.quantity).toLocaleString("en-IN")}</span>
-                                )}
-                              </div>
-                            ))}
+                            {order.order_items.map((item, i) => {
+                              const color = getColorInfo(item.selected_color);
+                              return (
+                                <div key={i} className="flex justify-between items-start text-[#75706B] gap-2">
+                                  <div className="flex flex-col">
+                                    <span className="text-[#1A1918] font-medium">
+                                      {item.product_name}
+                                    </span>
+                                    <div className="flex items-center flex-wrap gap-1.5 text-[11px] text-[#75706B] mt-0.5">
+                                      {color && (
+                                        <span className="inline-flex items-center gap-1 font-medium text-[#1A1918] bg-white px-1.5 py-0.5 rounded border border-[#EAE5DE]">
+                                          {color.hexCode && (
+                                            <span
+                                              className="w-2.5 h-2.5 rounded-full border border-black/10 inline-block shrink-0"
+                                              style={{ backgroundColor: color.hexCode }}
+                                            />
+                                          )}
+                                          <span>Color: {color.name}</span>
+                                        </span>
+                                      )}
+                                      <span>Size: {item.selected_size}</span>
+                                      <span>× {item.quantity}</span>
+                                    </div>
+                                  </div>
+                                  {item.unit_price && (
+                                    <span className="shrink-0 font-medium text-[#1A1918]">
+                                      ₹{(item.unit_price * item.quantity).toLocaleString("en-IN")}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

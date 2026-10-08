@@ -57,6 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_sub_categories_slug
 -- STEP 5: Row Level Security (RLS) for sub_categories
 -- Public read access so storefront can query categories; Service role write access.
 -- ----------------------------------------------------------------------------
+
 ALTER TABLE sub_categories ENABLE ROW LEVEL SECURITY;
 
 DO $$ 
