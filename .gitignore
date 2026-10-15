@@ -7,3 +7,7 @@ node_modules/
 backend/.env
 frontend/.env.local
 !backend/dist/**
+backend/.env.example
+frontend/.env.example
+*.mp4
+

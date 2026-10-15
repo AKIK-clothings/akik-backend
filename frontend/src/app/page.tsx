@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -30,6 +30,28 @@ export default function HomePage() {
   const [bestsellers, setBestsellers] = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [videoReady, setVideoReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Dynamically shift video source on viewport resize (mobile <-> laptop)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+
+    const updateVideoSource = () => {
+      if (!videoRef.current) return;
+      const targetSrc = mq.matches ? "/desktop_background.mp4" : "/mobile_backgrouns.mp4";
+      const current = videoRef.current.currentSrc || videoRef.current.src;
+      if (!current.endsWith(targetSrc)) {
+        setVideoReady(false);
+        videoRef.current.src = targetSrc;
+        videoRef.current.load();
+        videoRef.current.play().catch(() => {});
+      }
+    };
+
+    updateVideoSource();
+    mq.addEventListener("change", updateVideoSource);
+    return () => mq.removeEventListener("change", updateVideoSource);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -77,6 +99,7 @@ export default function HomePage() {
 
         {/* Background video */}
         <video
+          ref={videoRef}
           autoPlay
           loop
           muted
@@ -91,14 +114,14 @@ export default function HomePage() {
           {/* Mobile video */}
           <source
             media="(max-width: 767px)"
-            src="/mobile_background.mp4"
+            src="/mobile_backgrouns.mp4"
             type="video/mp4"
           />
 
           {/* Desktop and laptop video */}
           <source
             media="(min-width: 768px)"
-            src="/windows_background.mp4"
+            src="/desktop_background.mp4"
             type="video/mp4"
           />
 
