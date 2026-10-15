@@ -11,8 +11,8 @@
 
 # Testing, Scratch & Extraction Scripts
 scratch_ocr.ps1
-*.py
 *.mp4
+!public/*.mp4
 
 # Environment Variables & Secrets
 .env
