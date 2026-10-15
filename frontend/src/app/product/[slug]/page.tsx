@@ -133,6 +133,7 @@ export default function ProductDetailPage() {
 
   const isUnstitched =
     product?.category === "unstitched" ||
+    product?.category === "dupattas" ||
     product?.section === "men" ||
     !product?.sizes ||
     product.sizes.length === 0;
@@ -506,11 +507,21 @@ export default function ProductDetailPage() {
               <div className="p-3.5 rounded-lg bg-[#FAF9F6] border border-[#EAE5DE] text-xs text-[#75706B] flex items-center justify-between">
                 <div>
                   <span className="font-semibold text-[#1F1E1D] block">
-                    {product.section === "men" ? "Unstitched Kurta Set Fabric" : "Unstitched Fabric Piece"}
+                    {product.section === "men"
+                      ? "Unstitched Kurta Set Fabric"
+                      : product.category === "dupattas"
+                      ? product.subcategory?.toLowerCase() === "scarves"
+                        ? "Handcrafted Luxury Scarf"
+                        : "Handcrafted Luxury Dupatta"
+                      : "Unstitched Fabric Piece"}
                   </span>
                   <span className="text-[11px] text-[#75706B]">
                     {product.section === "men"
                       ? "Complete unstitched kurta fabric set • Standard cut • Ready for bespoke tailoring"
+                      : product.category === "dupattas"
+                      ? product.subcategory?.toLowerCase() === "scarves"
+                        ? "Artisanal luxury scarf • Standard cut • Ready to style"
+                        : "Standalone artisan dupatta • Standard drape • Ready to style"
                       : "Complete 3-piece fabric cut • No sizing required • Ready for custom tailoring"}
                   </span>
                 </div>

@@ -51,6 +51,10 @@ export const Header: React.FC = () => {
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
     }
+    if (!cat.subcategories || cat.subcategories.length === 0) {
+      setActiveCategory(null);
+      return;
+    }
     setActiveCategory(cat);
   };
 

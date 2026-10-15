@@ -27,6 +27,7 @@ export type ProductSection = "women" | "men";
 export type MainCategory =
   | "stitched"
   | "unstitched"
+  | "dupattas"
   | "kids"
   | "kurta-sets"
   | string;

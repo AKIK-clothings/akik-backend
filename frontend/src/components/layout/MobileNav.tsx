@@ -134,19 +134,21 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
                         )}
                       </Link>
 
-                      <button
-                        onClick={() => toggleCategory(category.id)}
-                        aria-expanded={isExpanded}
-                        aria-label={`Toggle ${category.title} subcategories`}
-                        className="p-2 text-[#75706B] hover:text-[#1F1E1D] rounded transition-colors"
-                      >
-                        <motion.div
-                          animate={{ rotate: isExpanded ? 180 : 0 }}
-                          transition={{ duration: 0.2 }}
+                      {category.subcategories && category.subcategories.length > 0 && (
+                        <button
+                          onClick={() => toggleCategory(category.id)}
+                          aria-expanded={isExpanded}
+                          aria-label={`Toggle ${category.title} subcategories`}
+                          className="p-2 text-[#75706B] hover:text-[#1F1E1D] rounded transition-colors"
                         >
-                          <ChevronDown className="w-4 h-4" />
-                        </motion.div>
-                      </button>
+                          <motion.div
+                            animate={{ rotate: isExpanded ? 180 : 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </motion.div>
+                        </button>
+                      )}
                     </div>
 
                     {/* Collapsible Accordion Items */}

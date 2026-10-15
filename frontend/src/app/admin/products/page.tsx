@@ -72,6 +72,7 @@ export default function AdminProductsPage() {
   const CATEGORY_LABELS: Record<string, string> = {
     "stitched": "Stitched",
     "unstitched": "Unstitched",
+    "dupattas": "Dupattas",
     "kids": "Kids",
     "kurta-sets": "Kurta Sets",
     "embroidered-satin": "Embroidered Satin",

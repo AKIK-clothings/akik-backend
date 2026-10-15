@@ -115,6 +115,31 @@ export const NAVIGATION_CATEGORIES: MegaMenuCategory[] = [
     },
   },
   {
+    id: "dupattas",
+    title: "Dupattas",
+    href: "/collections?collection=dupattas",
+    subcategories: [
+      {
+        title: "Scarves",
+        href: "/collections?collection=dupattas&sub=Scarves",
+        description: "Exquisite silk, satin and artisanal modal scarves",
+      },
+      {
+        title: "Dupattas",
+        href: "/collections?collection=dupattas&sub=Dupattas",
+        description: "Handcrafted artisan dupattas with rich borders",
+      },
+    ],
+    featuredCard: {
+      title: "Dupattas & Scarves",
+      subtitle: "Handcrafted artisan dupattas and luxury scarves",
+      imageSrc: "/images/luxury-cotton-satin/gilded-noir.jpeg",
+      ctaText: "Shop Dupattas",
+      href: "/collections?collection=dupattas",
+      tag: "Handcrafted Drapes",
+    },
+  },
+  {
     id: "kids",
     title: "Kids",
     href: "/collections?collection=kids",

@@ -181,7 +181,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {NAVIGATION_CATEGORIES.map((category) => (
+          {NAVIGATION_CATEGORIES.filter((category) => category.id !== "dupattas").map((category) => (
             <div
               key={category.id}
               className="group relative rounded-xl overflow-hidden bg-white border border-[#EAE5DE] shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col justify-between"

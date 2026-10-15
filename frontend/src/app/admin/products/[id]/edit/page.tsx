@@ -11,6 +11,7 @@ const CATEGORIES_BY_SECTION: Record<"women" | "men", Array<{ value: string; labe
   women: [
     { value: "unstitched", label: "Unstitched" },
     { value: "stitched", label: "Stitched" },
+    { value: "dupattas", label: "Dupattas" },
     { value: "kids", label: "Kids" },
     { value: "embroidered-satin", label: "Embroidered Satin" },
     { value: "luxury-cotton-satin", label: "Luxury Cotton Satin" },
@@ -28,6 +29,8 @@ const DEFAULT_SUBCATEGORIES: Record<"women" | "men", string[]> = {
     "Satin Lucknowi Collection",
     "Rose Royale Collection",
     "PURE COTTON SUITS",
+    "Scarves",
+    "Dupattas",
   ],
   men: [
     "Kurta Sets",
@@ -275,6 +278,14 @@ export default function AdminEditProductPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    if (name === "category" && value === "dupattas") {
+      setForm((prev) => ({
+        ...prev,
+        category: value,
+        subcategory: ["Scarves", "Dupattas"].includes(prev.subcategory) ? prev.subcategory : "Scarves",
+      }));
+      return;
+    }
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
@@ -310,7 +321,7 @@ export default function AdminEditProductPage() {
     setIsSubmitting(true);
 
     try {
-      const isUnstitched = form.category === "unstitched" || section === "men";
+      const isUnstitched = form.category === "unstitched" || form.category === "dupattas" || section === "men";
       const finalSizes = isUnstitched ? [] : selectedSizes;
       const sizeStockMap: Record<string, number> = {};
       let totalStock = 0;
@@ -617,11 +628,13 @@ export default function AdminEditProductPage() {
         {/* Stock & Sizes */}
         <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-4">
           <h2 className="font-semibold text-[#1A1918]">Inventory & Sizes</h2>
-          {form.category === "unstitched" || section === "men" ? (
+          {form.category === "unstitched" || form.category === "dupattas" || section === "men" ? (
             <div className="space-y-3">
               <p className="text-xs text-[#75706B] bg-[#FAF9F6] p-3 rounded-lg border border-[#EAE5DE]">
                 {section === "men"
                   ? "Men's unstitched kurta set does not require size variants. Standard full unstitched fabric cut."
+                  : form.category === "dupattas"
+                  ? "Dupatta does not require size variants. Standard full length drape."
                   : "Unstitched category does not require size variants. Standard full fabric cut."}
               </p>
               <div>

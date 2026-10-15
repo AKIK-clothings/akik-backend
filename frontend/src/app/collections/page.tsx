@@ -138,6 +138,22 @@ function CollectionsContent() {
   // Products state (live from API, fallback to mock)
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [subcategoriesList, setSubcategoriesList] = useState<string[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api
+      .getSubcategories(sectionParam || "women")
+      .then((res) => {
+        if (isMounted && res && res.length > 0) {
+          setSubcategoriesList(res.map((s) => s.name));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [sectionParam]);
 
   useEffect(() => {
     let isMounted = true;
@@ -251,6 +267,12 @@ function CollectionsContent() {
       ? "Stitched Collection"
       : collectionParam === "unstitched"
       ? "Unstitched Collection"
+      : collectionParam === "dupattas"
+      ? subParam.length === 1 && subParam[0].toLowerCase() === "scarves"
+        ? "Luxury Scarves Collection"
+        : subParam.length === 1 && subParam[0].toLowerCase() === "dupattas"
+        ? "Artisan Dupattas Collection"
+        : "Dupattas & Scarves Collection"
       : collectionParam === "kids"
       ? "Kids Collection"
       : "All Curated Collections";
@@ -418,6 +440,7 @@ function CollectionsContent() {
           {/* Desktop Filter Sidebar (3 Columns / Sticky) */}
           <aside className="hidden lg:block col-span-3 sticky top-28 bg-white p-5 rounded-lg border border-[#EAE5DE] shadow-sm">
             <FilterContent
+              subcategoriesList={subcategoriesList}
               selectedCollection={collectionParam}
               onSelectCollection={handleSelectCollection}
               selectedSubcategories={subParam}
@@ -538,6 +561,7 @@ function CollectionsContent() {
 
               <div className="flex-1 overflow-y-auto p-6">
                 <FilterContent
+                  subcategoriesList={subcategoriesList}
                   selectedCollection={collectionParam}
                   onSelectCollection={handleSelectCollection}
                   selectedSubcategories={subParam}

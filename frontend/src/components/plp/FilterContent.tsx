@@ -31,6 +31,11 @@ const SHARED_SUBCATEGORIES = [
   "PURE COTTON SUITS",
 ];
 
+const DUPATTAS_DEFAULT_SUBCATEGORIES = [
+  "Scarves",
+  "Dupattas",
+];
+
 const MEN_DEFAULT_SUBCATEGORIES = [
   "Premium Cotton Plain",
   "Premium cotton self designed",
@@ -57,7 +62,11 @@ export const FilterContent: React.FC<FilterContentProps> = ({
   hasActiveFilters,
 }) => {
   const availableSubs =
-    subcategoriesList && subcategoriesList.length > 0
+    selectedCollection === "dupattas"
+      ? (subcategoriesList && subcategoriesList.length > 0
+          ? Array.from(new Set([...DUPATTAS_DEFAULT_SUBCATEGORIES, ...subcategoriesList.filter((s) => !SHARED_SUBCATEGORIES.includes(s) && !MEN_DEFAULT_SUBCATEGORIES.includes(s))]))
+          : DUPATTAS_DEFAULT_SUBCATEGORIES)
+      : subcategoriesList && subcategoriesList.length > 0
       ? subcategoriesList
       : section === "men"
       ? MEN_DEFAULT_SUBCATEGORIES
@@ -73,6 +82,7 @@ export const FilterContent: React.FC<FilterContentProps> = ({
           { id: "all", label: "All Collections" },
           { id: "stitched", label: "Stitched" },
           { id: "unstitched", label: "Unstitched" },
+          { id: "dupattas", label: "Dupattas" },
           { id: "kids", label: "Kids" },
         ];
 
@@ -152,8 +162,8 @@ export const FilterContent: React.FC<FilterContentProps> = ({
         </div>
       </div>
 
-      {/* 3. Size Filter (Hidden if unstitched selected or men section) */}
-      {section !== "men" && selectedCollection !== "unstitched" && (
+      {/* 3. Size Filter (Hidden if unstitched, dupattas selected, or men section) */}
+      {section !== "men" && selectedCollection !== "unstitched" && selectedCollection !== "dupattas" && (
         <div className="pt-3 border-t border-[#EAE5DE]">
           <h4 className="text-xs font-bold uppercase tracking-wider text-[#75706B] mb-2.5">
             Size

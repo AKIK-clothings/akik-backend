@@ -20,7 +20,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
   onMouseEnter,
   onMouseLeave,
 }) => {
-  if (!activeCategory) return null;
+  if (!activeCategory || !activeCategory.subcategories || activeCategory.subcategories.length === 0) return null;
 
   return (
     <AnimatePresence>

@@ -96,7 +96,9 @@ VALUES
   ('women', 'Luxury Cotton Satin', 'luxury-cotton-satin'),
   ('women', 'Satin Lucknowi Collection', 'satin-lucknowi-collection'),
   ('women', 'Rose Royale Collection', 'rose-royale-collection'),
-  ('women', 'PURE COTTON SUITS', 'pure-cotton-suits')
+  ('women', 'PURE COTTON SUITS', 'pure-cotton-suits'),
+  ('women', 'Scarves', 'scarves'),
+  ('women', 'Dupattas', 'dupattas')
 ON CONFLICT (section, slug) DO NOTHING;
 
 -- ----------------------------------------------------------------------------

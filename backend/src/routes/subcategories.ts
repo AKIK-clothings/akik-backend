@@ -13,6 +13,8 @@ const FALLBACK_SUBCATEGORIES = [
   { id: "sub-women-3", section: "women", name: "Satin Lucknowi Collection", slug: "satin-lucknowi-collection" },
   { id: "sub-women-4", section: "women", name: "Rose Royale Collection", slug: "rose-royale-collection" },
   { id: "sub-women-5", section: "women", name: "PURE COTTON SUITS", slug: "pure-cotton-suits" },
+  { id: "sub-women-6", section: "women", name: "Scarves", slug: "scarves" },
+  { id: "sub-women-7", section: "women", name: "Dupattas", slug: "dupattas" },
 ];
 
 // GET /api/subcategories — List sub-categories with optional section filter
