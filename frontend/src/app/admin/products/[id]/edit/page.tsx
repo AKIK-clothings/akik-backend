@@ -19,6 +19,7 @@ const CATEGORIES_BY_SECTION: Record<"women" | "men", Array<{ value: string; labe
   ],
   men: [
     { value: "kurta-sets", label: "Kurta Sets" },
+    { value: "shirt-fabric", label: "Shirt Fabric" },
   ],
 };
 
@@ -34,6 +35,7 @@ const DEFAULT_SUBCATEGORIES: Record<"women" | "men", string[]> = {
   ],
   men: [
     "Kurta Sets",
+    "Shirt Fabric",
     "Premium Cotton Plain",
     "Premium cotton self designed",
   ],
@@ -84,9 +86,9 @@ export default function AdminEditProductPage() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>(["S", "M", "L", "XL", "XXL", "XXXL"]);
   const [unstitchedQuantity, setUnstitchedQuantity] = useState<number>(1);
   const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({});
-  const [colorVariants, setColorVariants] = useState<{ name: string; hexCode: string; isSoldOut: boolean }[]>([
-    { name: "", hexCode: "#C47D5A", isSoldOut: false },
-  ]);
+  const [colorVariants, setColorVariants] = useState<
+    { name: string; hexCode: string; imageSrc?: string; secondaryImageSrc?: string; isSoldOut: boolean }[]
+  >([{ name: "", hexCode: "#C47D5A", isSoldOut: false }]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
@@ -179,6 +181,8 @@ export default function AdminEditProductPage() {
           product.color_variants.map((c) => ({
             name: c.name,
             hexCode: c.hexCode,
+            imageSrc: c.imageSrc || "",
+            secondaryImageSrc: c.secondaryImageSrc || "",
             isSoldOut: Boolean(c.isSoldOut),
           }))
         );
@@ -373,7 +377,8 @@ export default function AdminEditProductPage() {
         colorVariants: validColors.map((c, i) => ({
           name: c.name,
           hexCode: c.hexCode,
-          imageSrc: updatedImages[i] || updatedImages[0] || "",
+          imageSrc: updatedImages[i] || c.imageSrc || updatedImages[0] || "",
+          secondaryImageSrc: c.secondaryImageSrc || "",
           isSoldOut: Boolean(c.isSoldOut),
         })),
         primaryImage: updatedImages[0] || "",

@@ -12,6 +12,7 @@ const FALLBACK_SUBCATEGORIES = [
     { id: "sub-men-1", section: "men", name: "Kurta Sets", slug: "kurta-sets" },
     { id: "sub-men-2", section: "men", name: "Premium Cotton Plain", slug: "premium-cotton-plain" },
     { id: "sub-men-3", section: "men", name: "Premium Cotton Self Designed", slug: "premium-cotton-self-designed" },
+    { id: "sub-men-4", section: "men", name: "Shirt Fabric", slug: "shirt-fabric" },
     { id: "sub-women-1", section: "women", name: "Embroidered Satin with Dupatta", slug: "embroidered-satin-with-dupatta" },
     { id: "sub-women-2", section: "women", name: "Luxury Cotton Satin", slug: "luxury-cotton-satin" },
     { id: "sub-women-3", section: "women", name: "Satin Lucknowi Collection", slug: "satin-lucknowi-collection" },

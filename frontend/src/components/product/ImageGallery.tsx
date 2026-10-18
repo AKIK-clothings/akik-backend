@@ -18,7 +18,13 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
   const [zoomCoords, setZoomCoords] = useState({ x: 50, y: 50 });
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
-  const activeImage = images[activeIndex] || images[0] || "/images/embroidered-satin/blue-lavish-model.png";
+  const fallbackPlaceholder = "/images/men/men-kurta-set.jpg";
+  const validImages = (images || []).filter(
+    (img): img is string => typeof img === "string" && img.trim() !== ""
+  );
+  const displayImages = validImages.length > 0 ? validImages : [fallbackPlaceholder];
+
+  const activeImage = displayImages[activeIndex] || displayImages[0] || fallbackPlaceholder;
 
   // Mouse move handler for hover zoom lens
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -31,18 +37,18 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
   };
 
   const nextImage = () => {
-    setActiveIndex((prev) => (prev + 1) % images.length);
+    setActiveIndex((prev) => (prev + 1) % displayImages.length);
   };
 
   const prevImage = () => {
-    setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
+    setActiveIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
   };
 
   return (
     <div className="w-full flex flex-col md:flex-row gap-4 items-start">
       {/* Desktop Left: Vertical Thumbnail Strip */}
       <div className="hidden md:flex flex-col gap-3 shrink-0 w-20">
-        {images.map((img, idx) => (
+        {displayImages.map((img, idx) => (
           <button
             key={idx}
             type="button"
@@ -107,7 +113,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
           </div>
 
           {/* Navigation Arrows for Tablet / Mobile */}
-          {images.length > 1 && (
+          {displayImages.length > 1 && (
             <div className="md:hidden">
               <button
                 type="button"
@@ -130,9 +136,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
         </div>
 
         {/* Mobile: Dot Indicators */}
-        {images.length > 1 && (
+        {displayImages.length > 1 && (
           <div className="flex items-center justify-center gap-1.5 mt-3 md:hidden">
-            {images.map((_, idx) => (
+            {displayImages.map((_, idx) => (
               <button
                 key={idx}
                 type="button"

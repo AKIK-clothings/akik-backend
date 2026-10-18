@@ -30,6 +30,7 @@ export type MainCategory =
   | "dupattas"
   | "kids"
   | "kurta-sets"
+  | "shirt-fabric"
   | string;
 
 export type SubCategory =
@@ -39,6 +40,7 @@ export type SubCategory =
   | "Rose Royale Collection"
   | "Premium Cotton Plain"
   | "Premium Cotton Self Designed"
+  | "Shirt Fabric"
   | string;
 
 export interface SubCategoryItem {

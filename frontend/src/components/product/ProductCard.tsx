@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -101,11 +101,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     setSelectedColor(color);
   };
 
-  const activeImage = selectedColor.imageSrc || product.primaryImage;
-  const secondaryImage =
-    selectedColor.secondaryImageSrc || product.secondaryImage || activeImage;
+  const fallbackImage =
+    product.section === "men"
+      ? "/images/men/men-kurta-set.jpg"
+      : "/images/embroidered-satin/blue-lavish-model.png";
 
+  const rawActive = selectedColor.imageSrc || product.primaryImage;
+  const activeImage = rawActive && rawActive.trim() !== "" ? rawActive : fallbackImage;
+
+  const rawSecondary = selectedColor.secondaryImageSrc || product.secondaryImage;
+  const secondaryImage =
+    rawSecondary && rawSecondary.trim() !== "" && rawSecondary !== activeImage
+      ? rawSecondary
+      : null;
+
+  const [currentSrc, setCurrentSrc] = useState(activeImage);
+  const [secondarySrc, setSecondarySrc] = useState(secondaryImage);
   const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    setCurrentSrc(activeImage);
+  }, [activeImage]);
+
+  useEffect(() => {
+    setSecondarySrc(secondaryImage);
+  }, [secondaryImage]);
 
   return (
     <div
@@ -127,22 +147,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           >
             {/* Primary Image */}
             <Image
-              src={activeImage}
+              src={currentSrc}
               alt={`${product.name} - ${selectedColor.name}`}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
               priority={priorityImage}
+              onError={() => setCurrentSrc(fallbackImage)}
             />
 
             {/* Secondary Image Fade-in on Hover - deferred until hover */}
-            {!isAllColorsSold && secondaryImage && isHovered && (
+            {!isAllColorsSold && secondarySrc && isHovered && (
               <Image
-                src={secondaryImage}
+                src={secondarySrc}
                 alt={`${product.name} alternate view`}
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 className="object-cover object-top opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out"
+                onError={() => setSecondarySrc(null)}
               />
             )}
           </div>

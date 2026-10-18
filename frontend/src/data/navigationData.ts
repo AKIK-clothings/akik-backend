@@ -182,28 +182,38 @@ export const NAVIGATION_CATEGORIES: MegaMenuCategory[] = [
     badge: "New",
     subcategories: [
       {
-        title: "All Kurta Sets",
+        title: "All Men's",
+        href: "/men",
+        description: "Explore complete men's unstitched collection",
+      },
+      {
+        title: "Kurta Sets",
         href: "/men/kurta-sets",
         description: "Bespoke unstitched ethnic kurta sets for men",
       },
       {
+        title: "Shirt Fabric",
+        href: "/men/shirt-fabric",
+        description: "Premium unstitched shirt fabric in refined cotton",
+      },
+      {
         title: "Premium Cotton Plain",
         href: "/men/kurta-sets?sub=Premium+Cotton+Plain",
-        description: "Breathable, sophisticated unstitched pure cotton kurta sets",
+        description: "Breathable, sophisticated unstitched pure cotton fabrics",
       },
       {
         title: "Premium cotton self designed",
         href: "/men/kurta-sets?sub=Premium+cotton+self+designed",
-        description: "Intricately woven self-textured unstitched cotton kurta fabrics",
+        description: "Intricately woven self-textured unstitched cotton fabrics",
       },
     ],
     featuredCard: {
-      title: "Men's Kurta Sets",
-      subtitle: "Unstitched ethnic ensembles in premium breathable cotton",
+      title: "Men's Collection",
+      subtitle: "Unstitched ethnic ensembles & shirt fabrics in premium cotton",
       imageSrc: "/images/men/men-kurta-set.jpg",
       ctaText: "Shop Men",
       href: "/men",
-      tag: "Unstitched Ethnic",
+      tag: "Unstitched Fabrics",
     },
   },
 ];

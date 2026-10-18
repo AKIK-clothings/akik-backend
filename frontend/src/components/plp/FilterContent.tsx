@@ -37,6 +37,8 @@ const DUPATTAS_DEFAULT_SUBCATEGORIES = [
 ];
 
 const MEN_DEFAULT_SUBCATEGORIES = [
+  "Kurta Sets",
+  "Shirt Fabric",
   "Premium Cotton Plain",
   "Premium cotton self designed",
 ];
@@ -77,6 +79,7 @@ export const FilterContent: React.FC<FilterContentProps> = ({
       ? [
           { id: "all", label: "All Men's" },
           { id: "kurta-sets", label: "Kurta Sets" },
+          { id: "shirt-fabric", label: "Shirt Fabric" },
         ]
       : [
           { id: "all", label: "All Collections" },

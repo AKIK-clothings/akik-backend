@@ -269,22 +269,22 @@ router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upl
             res.status(400).json({ error: "No images provided" });
             return;
         }
-        const allowedExts = ["jpg", "jpeg", "png", "webp"];
-        const uploadedUrls = [];
+        const allowedExts = ["jpg", "jpeg", "png", "webp", "jfif", "avif"];
         for (const file of files) {
             const fileExt = file.originalname.split(".").pop()?.toLowerCase();
             if (!fileExt || !allowedExts.includes(fileExt)) {
                 res.status(400).json({ error: `Invalid image file extension ".${fileExt}". Allowed: ${allowedExts.join(", ")}` });
                 return;
             }
-            // Compress & resize image to WebP (auto-orient EXIF, max 1000px, quality 75, effort 6)
+        }
+        // Compress and upload images concurrently to avoid timeouts
+        const uploadedUrls = await Promise.all(files.map(async (file) => {
             const compressedBuffer = await (0, sharp_1.default)(file.buffer)
                 .rotate()
-                .resize({ width: 1000, withoutEnlargement: true, fit: "inside" })
-                .webp({ quality: 75, effort: 6 })
+                .resize({ width: 1200, withoutEnlargement: true, fit: "inside" })
+                .webp({ quality: 80, effort: 4 })
                 .toBuffer();
             const key = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
-            // Upload compressed image to Cloudflare R2
             await r2_1.r2Client.send(new client_s3_1.PutObjectCommand({
                 Bucket: r2_1.R2_BUCKET,
                 Key: key,
@@ -292,8 +292,8 @@ router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upl
                 ContentType: "image/webp",
                 CacheControl: "public, max-age=31536000, immutable",
             }));
-            uploadedUrls.push((0, r2_1.getR2PublicUrl)(key));
-        }
+            return (0, r2_1.getR2PublicUrl)(key);
+        }));
         res.json({
             success: true,
             urls: uploadedUrls,

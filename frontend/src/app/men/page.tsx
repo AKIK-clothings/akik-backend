@@ -3,12 +3,12 @@ import { Suspense } from "react";
 import { MenCollectionContent } from "@/components/plp/MenCollectionContent";
 
 export const metadata: Metadata = {
-  title: "Men's Collection — Unstitched Kurta Sets | AKIK by Hafsa Khatri",
+  title: "Men's Collection — Kurta Sets & Shirt Fabric | AKIK by Hafsa Khatri",
   description:
-    "Explore AKIK's Men's collection: luxury unstitched kurta sets in Premium Cotton Plain and Self Designed weaves.",
+    "Explore AKIK's Men's collection: luxury unstitched kurta sets and shirt fabrics in Premium Cotton Plain and Self Designed weaves.",
   openGraph: {
     title: "Men's Collection | AKIK by Hafsa Khatri",
-    description: "Bespoke unstitched kurta sets for men crafted in premium cotton.",
+    description: "Bespoke unstitched kurta sets and shirt fabrics for men crafted in premium cotton.",
     images: ["/images/men/men-kurta-set.jpg"],
   },
 };
@@ -24,7 +24,7 @@ export default function MenPage() {
         </div>
       }
     >
-      <MenCollectionContent defaultCategory="kurta-sets" />
+      <MenCollectionContent defaultCategory="all" />
     </Suspense>
   );
 }

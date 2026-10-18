@@ -114,14 +114,27 @@ export default function ProductDetailPage() {
   // Gallery images update dynamically based on selected color variant (Prompt 4 requirement)
   const currentGalleryImages = useMemo(() => {
     if (!product) return [];
+    const fallback =
+      product.section === "men"
+        ? "/images/men/men-kurta-set.jpg"
+        : "/images/embroidered-satin/blue-lavish-model.png";
+    let rawList: (string | undefined)[] = [];
     if (selectedColor?.secondaryImageSrc) {
-      return [
+      rawList = [
         selectedColor.imageSrc,
         selectedColor.secondaryImageSrc,
         ...(product.galleryImages || []).slice(2),
       ];
+    } else {
+      rawList = [
+        selectedColor?.imageSrc || product.primaryImage,
+        ...(product.galleryImages || []).slice(1),
+      ];
     }
-    return [selectedColor?.imageSrc || product.primaryImage, ...(product.galleryImages || []).slice(1)];
+    const filtered = rawList.filter(
+      (img): img is string => typeof img === "string" && img.trim() !== ""
+    );
+    return filtered.length > 0 ? filtered : [fallback];
   }, [selectedColor, product]);
 
   // Pricing calculations
@@ -250,8 +263,11 @@ export default function ProductDetailPage() {
                 Men
               </Link>
               <span>/</span>
-              <Link href="/men/kurta-sets" className="hover:text-[#1F1E1D] shrink-0">
-                Kurta Sets
+              <Link
+                href={product.category === "shirt-fabric" ? "/men/shirt-fabric" : "/men/kurta-sets"}
+                className="hover:text-[#1F1E1D] shrink-0"
+              >
+                {product.category === "shirt-fabric" ? "Shirt Fabric" : "Kurta Sets"}
               </Link>
             </>
           ) : (
@@ -266,7 +282,9 @@ export default function ProductDetailPage() {
           <Link
             href={
               product.section === "men"
-                ? `/men/kurta-sets?sub=${encodeURIComponent(product.subcategory)}`
+                ? `/men/${product.category === "shirt-fabric" ? "shirt-fabric" : "kurta-sets"}?sub=${encodeURIComponent(
+                    product.subcategory
+                  )}`
                 : `/collections?collection=${product.category}&sub=${encodeURIComponent(
                     product.subcategory
                   )}`

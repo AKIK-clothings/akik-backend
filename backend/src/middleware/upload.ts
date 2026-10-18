@@ -8,11 +8,24 @@ export const upload = multer({
     files: 25, // max 25 files per request for multi-variant products
   },
   fileFilter: (_req, file, cb) => {
-    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (allowed.includes(file.mimetype)) {
+    const allowedMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/pjpeg",
+      "image/png",
+      "image/webp",
+      "image/jfif",
+      "image/avif",
+      "image/x-png",
+    ];
+    const mime = (file.mimetype || "").toLowerCase();
+    const isAllowedMime = allowedMimes.includes(mime);
+    const hasValidExt = Boolean(file.originalname.toLowerCase().match(/\.(jpe?g|png|webp|jfif|avif)$/));
+
+    if (isAllowedMime || hasValidExt) {
       cb(null, true);
     } else {
-      cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+      cb(new Error("Only JPEG, PNG, WebP, and AVIF images are allowed"));
     }
   },
 });

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, Edit2, Trash2, Eye, EyeOff, Loader2, Search } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, Loader2, Search, ImageIcon } from "lucide-react";
 import { adminApi, ApiProduct } from "@/lib/api";
 
 export default function AdminProductsPage() {
@@ -75,6 +75,7 @@ export default function AdminProductsPage() {
     "dupattas": "Dupattas",
     "kids": "Kids",
     "kurta-sets": "Kurta Sets",
+    "shirt-fabric": "Shirt Fabric",
     "embroidered-satin": "Embroidered Satin",
     "luxury-cotton-satin": "Luxury Cotton Satin",
     "satin-lucknowi": "Satin Lucknowi",
@@ -181,11 +182,13 @@ export default function AdminProductsPage() {
                   <tr key={product.id} className="hover:bg-[#FAFAF8] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-[#F5F3F0] shrink-0 border border-[#EAE5DE]">
-                          {product.primary_image && (
+                        <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-[#F5F3F0] shrink-0 border border-[#EAE5DE] flex items-center justify-center">
+                          {product.primary_image && product.primary_image.trim() !== "" ? (
                             <Image src={product.primary_image} alt={product.name} fill className="object-cover" sizes="40px"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                             />
+                          ) : (
+                            <ImageIcon className="w-4 h-4 text-[#A8A49F]" />
                           )}
                         </div>
                         <div>

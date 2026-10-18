@@ -14,6 +14,7 @@ const CATEGORIES_BY_SECTION: Record<"women" | "men", Array<{ value: string; labe
   ],
   men: [
     { value: "kurta-sets", label: "Kurta Sets" },
+    { value: "shirt-fabric", label: "Shirt Fabric" },
   ],
 };
 
@@ -29,6 +30,7 @@ const DEFAULT_SUBCATEGORIES: Record<"women" | "men", string[]> = {
   ],
   men: [
     "Kurta Sets",
+    "Shirt Fabric",
     "Premium Cotton Plain",
     "Premium cotton self designed",
   ],
@@ -293,21 +295,34 @@ export default function AdminNewProductPage() {
 
       // Step 2: Upload images if any
       if (imageFiles.length > 0) {
-        const { urls } = (await adminApi.uploadImages(product.id, imageFiles)) as { urls: string[] };
+        try {
+          const { urls } = (await adminApi.uploadImages(product.id, imageFiles)) as { urls: string[] };
 
-        // Update product with first image as primary, retaining section
-        await adminApi.updateProduct(product.id, {
-          section,
-          primaryImage: urls[0] || "",
-          secondaryImage: urls[1] || "",
-          galleryImages: urls,
-          colorVariants: colorVariants
-            .filter((c) => c.name)
-            .map((c, i) => ({
-              ...c,
-              imageSrc: urls[i] || urls[0] || "",
-            })),
-        });
+          if (urls && urls.length > 0) {
+            // Update product with first image as primary, retaining section
+            await adminApi.updateProduct(product.id, {
+              section,
+              primaryImage: urls[0] || "",
+              secondaryImage: urls[1] || "",
+              galleryImages: urls,
+              colorVariants: colorVariants
+                .filter((c) => c.name)
+                .map((c, i) => ({
+                  ...c,
+                  imageSrc: urls[i] || urls[0] || "",
+                })),
+            });
+          }
+        } catch (uploadErr) {
+          console.error("Image upload failed after product creation:", uploadErr);
+          setError(
+            uploadErr instanceof Error
+              ? `Product "${form.name}" created, but image upload failed: ${uploadErr.message}. Please edit the product to re-upload images.`
+              : "Product created, but image upload failed. Please edit the product to re-upload images."
+          );
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       router.push("/admin/products");

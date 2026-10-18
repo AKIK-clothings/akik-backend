@@ -305,8 +305,7 @@ router.post(
         return;
       }
 
-      const allowedExts = ["jpg", "jpeg", "png", "webp"];
-      const uploadedUrls: string[] = [];
+      const allowedExts = ["jpg", "jpeg", "png", "webp", "jfif", "avif"];
 
       for (const file of files) {
         const fileExt = file.originalname.split(".").pop()?.toLowerCase();
@@ -314,29 +313,32 @@ router.post(
           res.status(400).json({ error: `Invalid image file extension ".${fileExt}". Allowed: ${allowedExts.join(", ")}` });
           return;
         }
-
-        // Compress & resize image to WebP (auto-orient EXIF, max 1000px, quality 75, effort 6)
-        const compressedBuffer = await sharp(file.buffer)
-          .rotate()
-          .resize({ width: 1000, withoutEnlargement: true, fit: "inside" })
-          .webp({ quality: 75, effort: 6 })
-          .toBuffer();
-
-        const key = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
-
-        // Upload compressed image to Cloudflare R2
-        await r2Client.send(
-          new PutObjectCommand({
-            Bucket: R2_BUCKET,
-            Key: key,
-            Body: compressedBuffer,
-            ContentType: "image/webp",
-            CacheControl: "public, max-age=31536000, immutable",
-          })
-        );
-
-        uploadedUrls.push(getR2PublicUrl(key));
       }
+
+      // Compress and upload images concurrently to avoid timeouts
+      const uploadedUrls = await Promise.all(
+        files.map(async (file) => {
+          const compressedBuffer = await sharp(file.buffer)
+            .rotate()
+            .resize({ width: 1200, withoutEnlargement: true, fit: "inside" })
+            .webp({ quality: 80, effort: 4 })
+            .toBuffer();
+
+          const key = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
+
+          await r2Client.send(
+            new PutObjectCommand({
+              Bucket: R2_BUCKET,
+              Key: key,
+              Body: compressedBuffer,
+              ContentType: "image/webp",
+              CacheControl: "public, max-age=31536000, immutable",
+            })
+          );
+
+          return getR2PublicUrl(key);
+        })
+      );
 
       res.json({
         success: true,

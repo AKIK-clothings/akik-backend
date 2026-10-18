@@ -27,6 +27,8 @@ interface MenCollectionContentProps {
 }
 
 const FALLBACK_MEN_SUBCATEGORIES = [
+  "Kurta Sets",
+  "Shirt Fabric",
   "Premium Cotton Plain",
   "Premium cotton self designed",
 ];
@@ -254,17 +256,56 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
           <div className="text-xs uppercase tracking-widest text-[#75706B] font-semibold mb-2">
             <Link href="/" className="hover:text-[#1F1E1D]">Home</Link> /{" "}
             <Link href="/men" className="hover:text-[#1F1E1D]">Men</Link> /{" "}
-            <span className="text-[#1F1E1D]">Kurta Sets</span>
+            <span className="text-[#1F1E1D]">
+              {collectionParam === "shirt-fabric"
+                ? "Shirt Fabric"
+                : collectionParam === "kurta-sets"
+                ? "Kurta Sets"
+                : "All Men's"}
+            </span>
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl text-[#1F1E1D] font-normal tracking-wide">
-            Men&apos;s Collection — Unstitched Kurta Sets
+            {collectionParam === "shirt-fabric"
+              ? "Men's Collection — Shirt Fabric"
+              : collectionParam === "kurta-sets"
+              ? "Men's Collection — Unstitched Kurta Sets"
+              : "Men's Collection — Kurta Sets & Shirt Fabric"}
           </h1>
           <p className="text-xs sm:text-sm text-[#75706B] mt-2 max-w-2xl leading-relaxed">
-            Artisanal unstitched kurta fabric sets crafted for bespoke men&apos;s tailoring in Premium Cotton Plain and Self Designed textures.
+            {collectionParam === "shirt-fabric"
+              ? "Premium unstitched shirt fabrics in artisanal cotton and refined weaves for custom tailoring."
+              : "Artisanal unstitched kurta fabric sets and premium shirt fabrics crafted for bespoke men's tailoring."}
           </p>
 
+          {/* Category Tabs */}
+          <div className="flex items-center gap-2 mt-5 border-b border-[#EAE5DE] pb-3 flex-wrap">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#75706B] mr-2">Category:</span>
+            {[
+              { id: "all", label: "All Men's" },
+              { id: "kurta-sets", label: "Kurta Sets" },
+              { id: "shirt-fabric", label: "Shirt Fabric" },
+            ].map((cat) => {
+              const isSelected = (collectionParam === "all" && cat.id === "all") || collectionParam === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => handleSelectCollection(cat.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-[#1F1E1D] text-white shadow-sm"
+                      : "bg-[#F4EFEA] text-[#75706B] hover:bg-[#EAE5DE] hover:text-[#1F1E1D]"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Subcategory Pills */}
-          <div className="flex items-center gap-2 mt-5 flex-wrap">
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#75706B] mr-2">Filter:</span>
             <button
               type="button"
               onClick={() => {
@@ -272,13 +313,13 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
                   params.delete("sub");
                 });
               }}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wider transition-all cursor-pointer ${
                 subParam.length === 0
-                  ? "bg-[#1F1E1D] text-white shadow-sm"
-                  : "bg-[#F4EFEA] text-[#75706B] hover:bg-[#EAE5DE] hover:text-[#1F1E1D]"
+                  ? "bg-[#C47D5A] text-white shadow-sm"
+                  : "bg-white text-[#75706B] border border-[#EAE5DE] hover:border-[#C47D5A] hover:text-[#1F1E1D]"
               }`}
             >
-              All Kurta Sets
+              All Items
             </button>
             {subcategories.map((subName) => {
               const isActive = subParam.includes(subName);
@@ -287,10 +328,10 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
                   key={subName}
                   type="button"
                   onClick={() => handleToggleSubcategory(subName)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium tracking-wide transition-all cursor-pointer ${
                     isActive
                       ? "bg-[#C47D5A] text-white shadow-sm"
-                      : "bg-[#F4EFEA] text-[#75706B] hover:bg-[#EAE5DE] hover:text-[#1F1E1D]"
+                      : "bg-white text-[#75706B] border border-[#EAE5DE] hover:border-[#C47D5A] hover:text-[#1F1E1D]"
                   }`}
                 >
                   {subName}

@@ -90,6 +90,7 @@ VALUES
   ('men', 'Kurta Sets', 'kurta-sets'),
   ('men', 'Premium Cotton Plain', 'premium-cotton-plain'),
   ('men', 'Premium Cotton Self Designed', 'premium-cotton-self-designed'),
+  ('men', 'Shirt Fabric', 'shirt-fabric'),
 
   -- Women Section (Existing subcategories for data-driven parity)
   ('women', 'Embroidered Satin with Dupatta', 'embroidered-satin-with-dupatta'),
