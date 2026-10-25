@@ -20,6 +20,8 @@ export function buildAdminWhatsAppMessage(order: {
   couponDiscount?: number;
   shippingFee: number;
   paymentId?: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
 }): string {
   const adminNumber = process.env.ADMIN_WHATSAPP_NUMBER || "919833088958";
 
@@ -35,10 +37,17 @@ export function buildAdminWhatsAppMessage(order: {
       ? `\n🏷️ *Promo Code:* ${order.promoCode} (–₹${order.couponDiscount.toLocaleString("en-IN")})`
       : "";
 
+  const isCod = order.paymentMethod?.toLowerCase() === "cod";
+  const paymentMethodLabel = isCod ? "Cash on Delivery (COD)" : "Online Payment (Razorpay)";
+  const paymentStatusLabel = isCod ? "Pending (Collect on Delivery)" : "Paid ✓";
+  const totalLabel = isCod ? "Payable on Delivery" : "Total Paid";
+
   const message = `🛍️ *New Order Received — AKIK*
 ━━━━━━━━━━━━━━━━━
 📦 *Order No:* ${order.orderNumber}
-💳 *Payment ID:* ${order.paymentId || "COD"}
+💳 *Payment Method:* ${paymentMethodLabel}
+📊 *Payment Status:* ${paymentStatusLabel}
+${order.paymentId ? `🔖 *Payment ID:* ${order.paymentId}` : ""}
 
 👤 *Customer:*
 Name: ${order.customerName}
@@ -53,7 +62,7 @@ ${itemLines}
 
 ━━━━━━━━━━━━━━━━━
 📦 Shipping: ${order.shippingFee === 0 ? "FREE" : `₹${order.shippingFee}`}${discountLine}
-💰 *Total Paid: ₹${order.finalTotal.toLocaleString("en-IN")}*
+💰 *${totalLabel}: ₹${order.finalTotal.toLocaleString("en-IN")}*
 ━━━━━━━━━━━━━━━━━
 Please confirm the order & dispatch ASAP! 🙏`;
 
@@ -80,6 +89,8 @@ export function buildCustomerWhatsAppMessage(order: {
   shippingFee: number;
   promoCode?: string;
   couponDiscount?: number;
+  paymentMethod?: string;
+  paymentStatus?: string;
 }): string {
   // Normalise to E.164 — strip leading 0, add 91 if bare 10-digit Indian number
   let phone = order.customerPhone.replace(/\D/g, "");
@@ -97,18 +108,28 @@ export function buildCustomerWhatsAppMessage(order: {
       ? `\n🏷️ Promo (${order.promoCode}): −₹${order.couponDiscount.toLocaleString("en-IN")}`
       : "";
 
+  const isCod = order.paymentMethod?.toLowerCase() === "cod";
+  const introLine = isCod
+    ? `Hi ${order.customerName}! Your order has been placed with Cash on Delivery. 🎉`
+    : `Hi ${order.customerName}! Your payment was successful and your order has been placed. 🎉`;
+
+  const totalLine = isCod
+    ? `💵 *Amount Payable on Delivery: ₹${order.finalTotal.toLocaleString("en-IN")}* (Cash or UPI to delivery agent)`
+    : `💰 *Total Paid: ₹${order.finalTotal.toLocaleString("en-IN")}*`;
+
   const message = `✅ *Order Confirmed — AKIK by Hafsa Khatri* ✨
 ━━━━━━━━━━━━━━━━━
-Hi ${order.customerName}! Your payment was successful and your order has been placed. 🎉
+${introLine}
 
 📦 *Order No:* ${order.orderNumber}
+💳 *Payment Method:* ${isCod ? "Cash on Delivery (Pending)" : "Online Payment (Paid)"}
 
 🛒 *Items:*
 ${itemLines}
 
 ━━━━━━━━━━━━━━━━━
 📦 Shipping: ${order.shippingFee === 0 ? "FREE ✓" : `₹${order.shippingFee}`}${discountLine}
-💰 *Total Paid: ₹${order.finalTotal.toLocaleString("en-IN")}*
+${totalLine}
 
 📍 *Delivering to:*
 ${order.address}

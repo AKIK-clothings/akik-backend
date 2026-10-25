@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.adminEnquiryUpdateSchema = exports.adminOrderStatusSchema = exports.adminPromoUpdateSchema = exports.adminPromoCreateSchema = exports.subcategoryCreateSchema = exports.adminProductUpdateSchema = exports.adminProductCreateSchema = exports.enquirySubmitSchema = exports.promoValidateSchema = exports.adminLoginSchema = exports.checkoutVerifyPaymentSchema = exports.customerAddressSchema = exports.checkoutCreateOrderSchema = exports.checkoutItemSchema = exports.validateUuidParam = exports.validateBody = void 0;
+exports.adminEnquiryUpdateSchema = exports.adminOrderStatusSchema = exports.adminPromoUpdateSchema = exports.adminPromoCreateSchema = exports.subcategoryCreateSchema = exports.adminProductUpdateSchema = exports.adminProductCreateSchema = exports.enquirySubmitSchema = exports.promoValidateSchema = exports.adminLoginSchema = exports.checkoutCodOrderSchema = exports.checkoutVerifyPaymentSchema = exports.customerAddressSchema = exports.checkoutCreateOrderSchema = exports.checkoutItemSchema = exports.validateUuidParam = exports.validateBody = void 0;
 const zod_1 = require("zod");
 const validateBody = (schema) => async (req, res, next) => {
     try {
@@ -71,6 +71,12 @@ exports.checkoutVerifyPaymentSchema = zod_1.z.object({
     customer: exports.customerAddressSchema,
     promoCode: zod_1.z.string().trim().optional(),
 });
+exports.checkoutCodOrderSchema = zod_1.z.object({
+    items: zod_1.z.array(exports.checkoutItemSchema).min(1, "Items are required"),
+    customer: exports.customerAddressSchema,
+    promoCode: zod_1.z.string().trim().optional(),
+    idempotencyKey: zod_1.z.string().trim().max(100).optional(),
+});
 // ─── Admin Auth Schemas ──────────────────────────────────────────────────────
 exports.adminLoginSchema = zod_1.z.object({
     email: zod_1.z.string().trim().email("Valid email required"),
@@ -138,9 +144,14 @@ exports.adminPromoCreateSchema = zod_1.z.object({
 });
 exports.adminPromoUpdateSchema = exports.adminPromoCreateSchema.partial();
 // ─── Admin Order Schemas (HIGH-07) ─────────────────────────────────────────────
-exports.adminOrderStatusSchema = zod_1.z.object({
-    status: zod_1.z.enum(["new", "confirmed", "dispatched", "delivered", "cancelled"]),
+exports.adminOrderStatusSchema = zod_1.z
+    .object({
+    status: zod_1.z.enum(["new", "confirmed", "dispatched", "delivered", "cancelled"]).optional(),
+    paymentStatus: zod_1.z.enum(["pending", "paid", "failed", "refunded"]).optional(),
     notes: zod_1.z.string().trim().max(1000).optional().nullable(),
+})
+    .refine((data) => data.status !== undefined || data.paymentStatus !== undefined || data.notes !== undefined, {
+    message: "At least one of status, paymentStatus, or notes must be provided",
 });
 // ─── Admin Enquiry Schemas (HIGH-07) ───────────────────────────────────────────
 exports.adminEnquiryUpdateSchema = zod_1.z.object({

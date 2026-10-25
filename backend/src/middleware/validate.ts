@@ -79,6 +79,13 @@ export const checkoutVerifyPaymentSchema = z.object({
   promoCode: z.string().trim().optional(),
 });
 
+export const checkoutCodOrderSchema = z.object({
+  items: z.array(checkoutItemSchema).min(1, "Items are required"),
+  customer: customerAddressSchema,
+  promoCode: z.string().trim().optional(),
+  idempotencyKey: z.string().trim().max(100).optional(),
+});
+
 // ─── Admin Auth Schemas ──────────────────────────────────────────────────────
 
 export const adminLoginSchema = z.object({
@@ -161,10 +168,15 @@ export const adminPromoUpdateSchema = adminPromoCreateSchema.partial();
 
 // ─── Admin Order Schemas (HIGH-07) ─────────────────────────────────────────────
 
-export const adminOrderStatusSchema = z.object({
-  status: z.enum(["new", "confirmed", "dispatched", "delivered", "cancelled"]),
-  notes: z.string().trim().max(1000).optional().nullable(),
-});
+export const adminOrderStatusSchema = z
+  .object({
+    status: z.enum(["new", "confirmed", "dispatched", "delivered", "cancelled"]).optional(),
+    paymentStatus: z.enum(["pending", "paid", "failed", "refunded"]).optional(),
+    notes: z.string().trim().max(1000).optional().nullable(),
+  })
+  .refine((data) => data.status !== undefined || data.paymentStatus !== undefined || data.notes !== undefined, {
+    message: "At least one of status, paymentStatus, or notes must be provided",
+  });
 
 // ─── Admin Enquiry Schemas (HIGH-07) ───────────────────────────────────────────
 

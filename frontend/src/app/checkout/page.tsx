@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingBag, Lock, Truck, Tag, CheckCircle, Loader2, ChevronDown } from "lucide-react";
+import { ShoppingBag, Lock, Truck, Tag, CheckCircle, Loader2, ChevronDown, Banknote, CreditCard } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { api } from "@/lib/api";
 
@@ -26,6 +26,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { cart, orderSummary, appliedPromo, applyPromoCode, removePromoCode, clearCart } = useCart();
 
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("online");
   const [form, setForm] = useState({
     name: "", phone: "", email: "",
     addressLine1: "", addressLine2: "", city: "", state: "", pinCode: "", deliveryNotes: "",
@@ -169,6 +170,32 @@ export default function CheckoutPage() {
         unitPrice: item.discountedPrice,
       }));
 
+      // COD Path: Create order directly with pending payment status
+      if (paymentMethod === "cod") {
+        const idempotencyKey = `akik_cod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const { orderNumber, customerWhatsAppUrl } = await api.createCodOrder({
+          items: checkoutItems,
+          customer: form,
+          subtotal: orderSummary.subtotal,
+          couponDiscount: orderSummary.couponDiscount,
+          shippingFee: orderSummary.shippingFee,
+          promoCode: appliedPromo?.code,
+          idempotencyKey,
+        });
+
+        if (customerWhatsAppUrl) {
+          window.open(customerWhatsAppUrl, "_blank", "noopener,noreferrer");
+        }
+
+        clearCart();
+        const cleanPhone = form.phone.replace(/\D/g, "").slice(-10);
+        const phoneParam = cleanPhone ? `&phone=${encodeURIComponent(cleanPhone)}` : "";
+        const waParam = customerWhatsAppUrl ? `&wa=${encodeURIComponent(customerWhatsAppUrl)}` : "";
+        router.push(`/checkout/success?order=${encodeURIComponent(orderNumber)}${phoneParam}${waParam}&method=cod`);
+        return;
+      }
+
+      // Online Payment Path (Razorpay)
       // Step 1: Create Razorpay order
       const { razorpayOrderId, amount, currency, keyId } = await api.createCheckoutOrder({
         items: checkoutItems,
@@ -451,6 +478,80 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
+              {/* Payment Method */}
+              <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-4">
+                <h2 className="font-semibold text-[#1F1E1D] flex items-center gap-2">
+                  <span className="w-6 h-6 bg-[#C47D5A] text-white text-xs rounded-full flex items-center justify-center font-bold">3</span>
+                  Payment Method
+                </h2>
+
+                <div className="space-y-3">
+                  {/* Option 1: Online Payment */}
+                  <label
+                    className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all ${
+                      paymentMethod === "online"
+                        ? "border-[#C47D5A] bg-[#FAF7F4] ring-1 ring-[#C47D5A]"
+                        : "border-[#EAE5DE] hover:border-[#C47D5A]/50 bg-[#FAFAF8]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="online"
+                      checked={paymentMethod === "online"}
+                      onChange={() => setPaymentMethod("online")}
+                      className="mt-1 text-[#C47D5A] focus:ring-[#C47D5A]"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-[#1F1E1D] flex items-center gap-1.5">
+                          <CreditCard className="w-4 h-4 text-[#C47D5A]" />
+                          Online Payment
+                        </span>
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded uppercase tracking-wider">
+                          Recommended
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#75706B] mt-1">
+                        Instant confirmation via UPI (Google Pay, PhonePe, Paytm), Cards, Net Banking & Wallets.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Option 2: Cash on Delivery */}
+                  <label
+                    className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all ${
+                      paymentMethod === "cod"
+                        ? "border-[#C47D5A] bg-[#FAF7F4] ring-1 ring-[#C47D5A]"
+                        : "border-[#EAE5DE] hover:border-[#C47D5A]/50 bg-[#FAFAF8]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="cod"
+                      checked={paymentMethod === "cod"}
+                      onChange={() => setPaymentMethod("cod")}
+                      className="mt-1 text-[#C47D5A] focus:ring-[#C47D5A]"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-[#1F1E1D] flex items-center gap-1.5">
+                          <Banknote className="w-4 h-4 text-[#C47D5A]" />
+                          Cash on Delivery
+                        </span>
+                        <span className="text-[10px] font-semibold text-[#75706B] bg-stone-100 px-2 py-0.5 rounded uppercase tracking-wider">
+                          Pay on Arrival
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#75706B] mt-1">
+                        Pay in cash or via UPI when your parcel is delivered at your doorstep.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               {error && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
               )}
@@ -551,7 +652,7 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* Pay Button */}
+            {/* Pay / Place Order Button */}
             <button
               type="submit"
               form="checkout-form"
@@ -559,15 +660,26 @@ export default function CheckoutPage() {
               className="w-full py-4 bg-[#C47D5A] hover:bg-[#A86947] text-white font-semibold text-sm rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
             >
               {isProcessing ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
+                <><Loader2 className="w-5 h-5 animate-spin" /> Processing Order...</>
+              ) : paymentMethod === "cod" ? (
+                <><CheckCircle className="w-4 h-4" /> Place COD Order (₹{orderSummary.finalTotal.toLocaleString("en-IN")})</>
               ) : (
                 <><Lock className="w-4 h-4" /> Pay ₹{orderSummary.finalTotal.toLocaleString("en-IN")} Securely</>
               )}
             </button>
 
             <div className="flex items-center justify-center gap-2 text-xs text-[#A8A49F]">
-              <Lock className="w-3 h-3" />
-              <span>Secured by Razorpay · UPI · Cards · Net Banking · Wallets</span>
+              {paymentMethod === "cod" ? (
+                <>
+                  <Banknote className="w-3.5 h-3.5 text-[#C47D5A]" />
+                  <span>Pay upon delivery · Cash or UPI accepted at your doorstep</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3 h-3" />
+                  <span>Secured by Razorpay · UPI · Cards · Net Banking · Wallets</span>
+                </>
+              )}
             </div>
 
             {/* Free Shipping Banner */}

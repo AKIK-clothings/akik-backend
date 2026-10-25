@@ -40,6 +40,7 @@ export interface OrderReceiptData {
   finalTotal: number;
   status: string;
   paymentStatus: string;
+  paymentMethod?: string;
   createdAt: string;
   updatedAt?: string;
   items: Array<{
@@ -68,6 +69,8 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
   const firstName = order.customerName ? order.customerName.split(" ")[0] : "Customer";
   const totalItemCount = order.items.reduce((acc, it) => acc + (it.quantity || 1), 0);
   const hasSavings = order.couponDiscount > 0;
+  const isCod = order.paymentMethod?.toLowerCase() === "cod";
+  const isPaymentPending = order.paymentStatus?.toLowerCase() === "pending";
 
   const handleCopyOrderNumber = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -88,9 +91,11 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
       case "new":
       case "confirmed":
         return {
-          title: "Your order is confirmed",
-          sub: "We have received your payment and our atelier is preparing your ensemble.",
-          pill: "Confirmed",
+          title: isCod && isPaymentPending ? "Your COD order is placed" : "Your order is confirmed",
+          sub: isCod && isPaymentPending
+            ? "Your Cash on Delivery order is confirmed and our atelier is preparing your ensemble."
+            : "We have received your payment and our atelier is preparing your ensemble.",
+          pill: isCod ? "COD Confirmed" : "Confirmed",
         };
       case "processing":
       case "tailoring":
@@ -114,7 +119,9 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
       default:
         return {
           title: `Your order is ${status}`,
-          sub: "Payment processed successfully. Your order is logged in our system.",
+          sub: isCod && isPaymentPending
+            ? "Your Cash on Delivery order is logged in our system."
+            : "Payment processed successfully. Your order is logged in our system.",
           pill: status,
         };
     }
@@ -139,7 +146,9 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
             <p className="text-xs text-gray-600">
               Date: {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </p>
-            <p className="text-xs text-gray-600">Payment: PAID ({order.paymentStatus})</p>
+            <p className="text-xs text-gray-600">
+              Payment: {isCod ? `CASH ON DELIVERY (${order.paymentStatus.toUpperCase()})` : `PAID (${order.paymentStatus})`}
+            </p>
           </div>
         </div>
       </div>
@@ -358,6 +367,23 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
         </p>
       </div>
 
+      {/* COD Payment Alert (Shown when COD and payment is pending) */}
+      {isCod && isPaymentPending && (
+        <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 sm:p-5 shadow-sm mb-6 flex items-start gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-900 font-bold shrink-0 text-base">
+            ₹
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold text-amber-950">
+              Amount to Pay on Delivery: ₹{order.finalTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            </h4>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              Payment Method: <strong>Cash on Delivery</strong>. Please pay in cash or via UPI to the delivery courier when your order is delivered.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Section 4: Order Credentials & Tracking Info Card */}
       <div className="bg-[#FAF9F6] rounded-2xl border border-[#EAE5DE] p-5 sm:p-6 shadow-sm mb-6 space-y-4">
         <div className="flex items-center justify-between border-b border-[#EAE5DE] pb-3">
@@ -367,8 +393,14 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
               Order Credentials for Tracking
             </h4>
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
-            Payment: {order.paymentStatus}
+          <span
+            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              isPaymentPending
+                ? "text-amber-800 bg-amber-100"
+                : "text-emerald-700 bg-emerald-100/70"
+            }`}
+          >
+            {isCod ? `COD: ${order.paymentStatus}` : `Payment: ${order.paymentStatus}`}
           </span>
         </div>
 

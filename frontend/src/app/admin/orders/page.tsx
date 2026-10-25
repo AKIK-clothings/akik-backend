@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2, Package, ChevronDown, MapPin, Phone, Mail, StickyNote, Calendar } from "lucide-react";
+import { Loader2, Package, ChevronDown, MapPin, Phone, Mail, StickyNote, Calendar, CheckCircle } from "lucide-react";
 import { adminApi } from "@/lib/api";
 
 interface Order {
@@ -21,6 +21,7 @@ interface Order {
   shipping_fee: number;
   coupon_discount: number;
   promo_code?: string;
+  payment_method?: string;
   status: string;
   payment_status: string;
   created_at: string;
@@ -69,6 +70,7 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState(""); // "" = all, "YYYY-MM-DD" = specific day
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -117,6 +119,22 @@ export default function AdminOrdersPage() {
       console.error(err);
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleMarkPaymentCollected = async (orderId: string) => {
+    if (!confirm("Are you sure you want to mark this Cash on Delivery payment as collected / paid?")) return;
+    setUpdatingPaymentId(orderId);
+    try {
+      await adminApi.updateOrderPaymentStatus(orderId, "paid");
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, payment_status: "paid" } : o))
+      );
+    } catch (err) {
+      alert("Failed to update payment status");
+      console.error(err);
+    } finally {
+      setUpdatingPaymentId(null);
     }
   };
 
@@ -231,7 +249,7 @@ export default function AdminOrdersPage() {
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div className="space-y-1 flex-1 min-w-0">
                       {/* Order ID + Status badges */}
-                      <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-[#1A1918] font-mono">{order.order_number}</span>
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
@@ -240,11 +258,28 @@ export default function AdminOrdersPage() {
                         >
                           {order.status}
                         </span>
-                        {order.payment_status === "paid" && (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                            Paid ✓
-                          </span>
-                        )}
+
+                        {/* Payment Method Badge */}
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            order.payment_method === "cod"
+                              ? "bg-amber-100 text-amber-900 border border-amber-300"
+                              : "bg-blue-50 text-blue-700 border border-blue-200"
+                          }`}
+                        >
+                          {order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}
+                        </span>
+
+                        {/* Payment Status Badge */}
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            order.payment_status === "paid"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {order.payment_status === "paid" ? "Paid ✓" : "Payment Pending"}
+                        </span>
                       </div>
 
                       {/* Customer name */}
@@ -304,11 +339,28 @@ export default function AdminOrdersPage() {
                       )}
                     </div>
 
-                    {/* Right: Total + Status changer */}
-                    <div className="flex flex-col items-end gap-3 shrink-0">
+                    {/* Right: Total + Status changer + COD payment collected button */}
+                    <div className="flex flex-col items-end gap-2.5 shrink-0">
                       <p className="text-lg font-bold text-[#1A1918]">
                         ₹{order.final_total.toLocaleString("en-IN")}
                       </p>
+
+                      {order.payment_method === "cod" && order.payment_status !== "paid" && (
+                        <button
+                          onClick={() => handleMarkPaymentCollected(order.id)}
+                          disabled={updatingPaymentId === order.id}
+                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-60 shadow-sm"
+                          title="Mark Cash on Delivery payment as collected"
+                        >
+                          {updatingPaymentId === order.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          )}
+                          <span>Mark Payment Collected</span>
+                        </button>
+                      )}
+
                       <div className="relative">
                         <select
                           value={order.status}
@@ -378,6 +430,18 @@ export default function AdminOrdersPage() {
                         </p>
                         <div className="space-y-1">
                           <div className="flex justify-between text-[#75706B]">
+                            <span>Payment Method</span>
+                            <span className="font-medium text-[#1A1918]">
+                              {order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment (Razorpay)"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-[#75706B]">
+                            <span>Payment Status</span>
+                            <span className={order.payment_status === "paid" ? "text-green-700 font-medium" : "text-amber-800 font-medium"}>
+                              {order.payment_status === "paid" ? "Paid ✓" : "Pending (Collect on Delivery)"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-[#75706B]">
                             <span>Subtotal</span>
                             <span>₹{(order.subtotal || 0).toLocaleString("en-IN")}</span>
                           </div>
@@ -398,7 +462,7 @@ export default function AdminOrdersPage() {
                             </span>
                           </div>
                           <div className="flex justify-between font-bold text-[#1A1918] border-t border-[#EAE5DE] pt-1 mt-1">
-                            <span>Total Paid</span>
+                            <span>{order.payment_status === "paid" ? "Total Paid" : "Total (Payable on Delivery)"}</span>
                             <span>₹{order.final_total.toLocaleString("en-IN")}</span>
                           </div>
                         </div>

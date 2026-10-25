@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { razorpay } from "../config/razorpay";
 import { supabase } from "../config/supabase";
+import { validateCodEligibility } from "../config/cod";
 import { getNextOrderNumber } from "../utils/orderNumber";
 import { buildAdminWhatsAppMessage, buildCustomerWhatsAppMessage } from "../utils/whatsapp";
 import { checkoutLimiter } from "../middleware/rateLimit";
@@ -9,9 +10,42 @@ import {
   validateBody,
   checkoutCreateOrderSchema,
   checkoutVerifyPaymentSchema,
+  checkoutCodOrderSchema,
 } from "../middleware/validate";
 
 const router = Router();
+
+// ─── COD Idempotency Cache ─────────────────────────────────────────────────────
+interface CachedCodOrder {
+  orderNumber: string;
+  customerWhatsAppUrl: string;
+  finalTotal: number;
+  timestamp: number;
+}
+const codIdempotencyMap = new Map<string, CachedCodOrder>();
+
+function getCachedCodOrder(key?: string): CachedCodOrder | null {
+  if (!key) return null;
+  const entry = codIdempotencyMap.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > 10 * 60 * 1000) {
+    codIdempotencyMap.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function setCachedCodOrder(key: string, data: Omit<CachedCodOrder, "timestamp">) {
+  if (codIdempotencyMap.size > 200) {
+    const now = Date.now();
+    for (const [k, v] of codIdempotencyMap.entries()) {
+      if (now - v.timestamp > 10 * 60 * 1000) {
+        codIdempotencyMap.delete(k);
+      }
+    }
+  }
+  codIdempotencyMap.set(key, { ...data, timestamp: Date.now() });
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CheckoutItemInput {
@@ -568,6 +602,263 @@ router.post(
   }
 );
 
+// ─── POST /api/checkout/create-cod-order ─────────────────────────────────────
+// Cash on Delivery: Authoritative price recalculation → Eligibility → Inventory check → Atomicity → Pending Payment
+router.post(
+  "/create-cod-order",
+  checkoutLimiter,
+  validateBody(checkoutCodOrderSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const {
+        items,
+        customer,
+        promoCode,
+        idempotencyKey,
+      }: {
+        items: CheckoutItemInput[];
+        customer: CustomerAddressInput;
+        promoCode?: string;
+        idempotencyKey?: string;
+      } = req.body;
+
+      // ── 1. Idempotency Check (In-Memory Key) ────────────────────────────────
+      if (idempotencyKey) {
+        const cached = getCachedCodOrder(idempotencyKey);
+        if (cached) {
+          res.json({
+            success: true,
+            orderNumber: cached.orderNumber,
+            customerWhatsAppUrl: cached.customerWhatsAppUrl,
+            paymentMethod: "cod",
+            paymentStatus: "pending",
+            finalTotal: cached.finalTotal,
+            message: "Order placed successfully (cached)",
+          });
+          return;
+        }
+      }
+
+      // ── 2. Idempotency Check (Database: Duplicate submission within 30s) ────
+      const cleanPhone = customer.phone.replace(/\D/g, "").slice(-10);
+      const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
+      const { data: recentOrder } = await supabase
+        .from("orders")
+        .select("id, order_number, final_total, created_at")
+        .eq("payment_method", "cod")
+        .ilike("customer_phone", `%${cleanPhone}%`)
+        .gte("created_at", thirtySecondsAgo)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (recentOrder) {
+        const addressParts = [
+          customer.addressLine1,
+          customer.addressLine2,
+          customer.city,
+          customer.state,
+          customer.pinCode,
+        ].filter(Boolean);
+        const fullAddress = addressParts.join(", ");
+
+        const customerWhatsAppUrl = buildCustomerWhatsAppMessage({
+          orderNumber: recentOrder.order_number,
+          customerName: customer.name,
+          customerPhone: customer.phone,
+          address: fullAddress,
+          items: items.map((i) => ({
+            name: i.name || "Boutique Ensemble",
+            selectedSize: i.selectedSize,
+            selectedColor: i.selectedColor?.name || "Default",
+            quantity: i.quantity,
+            unitPrice: 0,
+          })),
+          finalTotal: recentOrder.final_total,
+          shippingFee: 0,
+          paymentMethod: "cod",
+          paymentStatus: "pending",
+        });
+
+        res.json({
+          success: true,
+          orderNumber: recentOrder.order_number,
+          customerWhatsAppUrl,
+          paymentMethod: "cod",
+          paymentStatus: "pending",
+          finalTotal: recentOrder.final_total,
+          message: "Order already placed successfully.",
+        });
+        return;
+      }
+
+      // ── 3. Server-side Authoritative Total Recalculation & Stock Check ───────
+      const verified = await calculateAuthoritativeTotals(items, promoCode);
+
+      // ── 4. Authoritative COD Eligibility Verification ────────────────────────
+      const codCheck = validateCodEligibility(verified.finalTotal);
+      if (!codCheck.eligible) {
+        res.status(400).json({ error: codCheck.reason || "Cash on Delivery is unavailable for this order." });
+        return;
+      }
+
+      // ── 5. Atomic Promo Verification & Lock (SEC-09) ─────────────────────────
+      let promoAppliedAtomically = false;
+      if (verified.appliedPromoCode) {
+        try {
+          const { data: promoResult, error: rpcErr } = await supabase.rpc("apply_promo_atomic", {
+            p_code: verified.appliedPromoCode,
+            p_subtotal: verified.subtotal,
+          });
+
+          if (!rpcErr && promoResult && Array.isArray(promoResult) && promoResult.length > 0) {
+            if (promoResult[0].success) {
+              promoAppliedAtomically = true;
+            } else {
+              console.warn("Atomic promo validation rejected code for COD:", promoResult[0].message);
+              verified.couponDiscount = 0;
+              verified.appliedPromoCode = undefined;
+              verified.finalTotal = Math.max(0, verified.subtotal + verified.shippingFee);
+            }
+          }
+        } catch (rpcEx) {
+          console.warn("Atomic promo check RPC failed, proceeding with verified totals:", rpcEx);
+        }
+      }
+
+      // ── 6. Build address string ─────────────────────────────────────────────
+      const addressParts = [
+        customer.addressLine1,
+        customer.addressLine2,
+        customer.city,
+        customer.state,
+        customer.pinCode,
+      ].filter(Boolean);
+      const fullAddress = addressParts.join(", ");
+
+      // ── 7. Generate atomic order number (SEC-02) ───────────────────────────
+      const orderNumber = await getNextOrderNumber();
+
+      // ── 8. Save order to Supabase (COD: payment_method='cod', payment_status='pending')
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          order_number: orderNumber,
+          customer_name: customer.name,
+          customer_phone: customer.phone,
+          customer_email: customer.email || null,
+          address_line1: customer.addressLine1,
+          address_line2: customer.addressLine2 || null,
+          city: customer.city,
+          state: customer.state,
+          pin_code: customer.pinCode,
+          delivery_notes: customer.deliveryNotes || null,
+          subtotal: verified.subtotal,
+          coupon_discount: verified.couponDiscount,
+          shipping_fee: verified.shippingFee,
+          final_total: verified.finalTotal,
+          promo_code: verified.appliedPromoCode || null,
+          payment_method: "cod",
+          razorpay_order_id: null,
+          razorpay_payment_id: null,
+          payment_status: "pending",
+          status: "confirmed",
+          notes: "Cash on Delivery order placed by customer. Payment to be collected upon delivery.",
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // ── 9. Save order items with verified unit prices ───────────────────────
+      const orderItems = verified.verifiedItems.map((item) => ({
+        order_id: order.id,
+        product_id: item.productId,
+        product_name: item.name,
+        selected_color: item.selectedColor,
+        selected_size: item.selectedSize,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        line_total: item.lineTotal,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error("Order items insert failed for COD, rolling back order record:", itemsError);
+        await supabase.from("orders").delete().eq("id", order.id);
+        throw itemsError;
+      }
+
+      // ── 10. Fallback promo usage increment if atomic RPC was bypassed ───────
+      if (verified.appliedPromoCode && !promoAppliedAtomically) {
+        try {
+          await supabase.rpc("increment_promo_usage", {
+            promo_code: verified.appliedPromoCode,
+          });
+        } catch (incErr) {
+          console.warn("Failed fallback promo increment for COD:", incErr);
+        }
+      }
+
+      // Mark WhatsApp as notified internally
+      await supabase
+        .from("orders")
+        .update({ whatsapp_notified: true })
+        .eq("id", order.id);
+
+      // Build customer WA confirmation URL
+      const customerWhatsAppUrl = buildCustomerWhatsAppMessage({
+        orderNumber,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        address: fullAddress,
+        items: verified.verifiedItems.map((item) => ({
+          name: item.name,
+          selectedSize: item.selectedSize,
+          selectedColor: item.selectedColor.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+        finalTotal: verified.finalTotal,
+        shippingFee: verified.shippingFee,
+        promoCode: verified.appliedPromoCode,
+        couponDiscount: verified.couponDiscount || 0,
+        paymentMethod: "cod",
+        paymentStatus: "pending",
+      });
+
+      // Cache in idempotency map
+      if (idempotencyKey) {
+        setCachedCodOrder(idempotencyKey, {
+          orderNumber,
+          customerWhatsAppUrl,
+          finalTotal: verified.finalTotal,
+        });
+      }
+
+      res.json({
+        success: true,
+        orderNumber,
+        customerWhatsAppUrl,
+        paymentMethod: "cod",
+        paymentStatus: "pending",
+        finalTotal: verified.finalTotal,
+        message: "Order placed successfully with Cash on Delivery!",
+      });
+    } catch (err: any) {
+      console.error("POST /checkout/create-cod-order error:", err);
+      const message =
+        process.env.NODE_ENV === "production"
+          ? (err.message || "Failed to create Cash on Delivery order")
+          : err.message || "Failed to create Cash on Delivery order";
+      res.status(400).json({ error: message });
+    }
+  }
+);
+
 // ─── POST /api/checkout/webhook ──────────────────────────────────────────────
 // Asynchronous payment webhook listener from Razorpay (SEC-04)
 router.post("/webhook", async (req: Request, res: Response): Promise<void> => {
@@ -720,7 +1011,7 @@ router.get("/track", checkoutLimiter, async (req: Request, res: Response): Promi
 
     const { data: order, error } = await supabase
       .from("orders")
-      .select("id, order_number, customer_name, customer_phone, customer_email, address_line1, address_line2, city, state, pin_code, promo_code, subtotal, coupon_discount, shipping_fee, final_total, status, payment_status, created_at, updated_at, order_items(id, product_name, selected_color, selected_size, quantity, unit_price, line_total)")
+      .select("id, order_number, customer_name, customer_phone, customer_email, address_line1, address_line2, city, state, pin_code, promo_code, subtotal, coupon_discount, shipping_fee, final_total, status, payment_status, payment_method, created_at, updated_at, order_items(id, product_name, selected_color, selected_size, quantity, unit_price, line_total)")
       .eq("order_number", cleanOrderNumber)
       .ilike("customer_phone", `%${cleanPhone}%`)
       .maybeSingle();
@@ -754,6 +1045,7 @@ router.get("/track", checkoutLimiter, async (req: Request, res: Response): Promi
         finalTotal: order.final_total,
         status: order.status,
         paymentStatus: order.payment_status,
+        paymentMethod: order.payment_method || "razorpay",
         createdAt: order.created_at,
         updatedAt: order.updated_at,
         items: (order.order_items || []).map((item: any) => ({

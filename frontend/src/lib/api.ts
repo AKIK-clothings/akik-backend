@@ -252,6 +252,38 @@ export const api = {
     return res.json();
   },
 
+  /** Create Cash on Delivery order */
+  async createCodOrder(data: {
+    items: CheckoutItem[];
+    customer: CustomerAddress;
+    subtotal: number;
+    couponDiscount?: number;
+    shippingFee?: number;
+    promoCode?: string;
+    idempotencyKey?: string;
+  }): Promise<{
+    success: boolean;
+    orderNumber: string;
+    customerWhatsAppUrl?: string;
+    paymentMethod: string;
+    paymentStatus: string;
+    finalTotal: number;
+  }> {
+    const res = await fetch(`${BASE_URL}/api/checkout/create-cod-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Failed to create Cash on Delivery order" }));
+      throw new Error(err.error || "Failed to create Cash on Delivery order");
+    }
+    // Invalidate orders and dashboard stats on order confirmation
+    memoryCache.invalidate("admin:orders");
+    memoryCache.invalidate("admin:stats");
+    return res.json();
+  },
+
   /** Public guest order tracking */
   async trackOrder(
     orderNumber: string,
@@ -275,6 +307,7 @@ export const api = {
       finalTotal: number;
       status: string;
       paymentStatus: string;
+      paymentMethod?: string;
       createdAt: string;
       updatedAt?: string;
       items: Array<{
@@ -523,6 +556,16 @@ export const adminApi = {
 
   updateOrderStatus: async (id: string, status: string, notes?: string) => {
     const res = await adminApi.request(`/api/admin/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, notes }) });
+    memoryCache.invalidate("admin:orders");
+    memoryCache.invalidate("admin:stats");
+    return res;
+  },
+
+  updateOrderPaymentStatus: async (id: string, paymentStatus: string, notes?: string) => {
+    const res = await adminApi.request(`/api/admin/orders/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ paymentStatus, notes }),
+    });
     memoryCache.invalidate("admin:orders");
     memoryCache.invalidate("admin:stats");
     return res;

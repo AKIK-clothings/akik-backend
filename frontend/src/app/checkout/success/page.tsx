@@ -15,6 +15,7 @@ function SuccessContent() {
   const orderNumber = searchParams.get("order");
   const phone = searchParams.get("phone");
   const waUrl = searchParams.get("wa");
+  const method = searchParams.get("method");
 
   const [orderData, setOrderData] = useState<OrderReceiptData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,7 +78,9 @@ function SuccessContent() {
               </p>
               <h1 className="text-2xl font-bold text-[#1F1E1D] mt-1">Thank you!</h1>
               <p className="text-xs sm:text-sm text-[#75706B] mt-2">
-                Your order is confirmed and logged in our system.
+                {method === "cod"
+                  ? "Your Cash on Delivery order is placed and logged in our system. Please pay in cash or UPI when your parcel is delivered."
+                  : "Your order is confirmed and logged in our system."}
               </p>
             </div>
 

@@ -148,19 +148,20 @@ router.patch(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
-      const { status, notes } = req.body;
+      const { status, paymentStatus, notes } = req.body;
 
       const updateData: Record<string, unknown> = {
-        status,
         updated_at: new Date().toISOString(),
       };
+      if (status !== undefined) updateData.status = status;
+      if (paymentStatus !== undefined) updateData.payment_status = paymentStatus;
       if (notes !== undefined) updateData.notes = notes;
 
       const { data: order, error } = await supabase
         .from("orders")
         .update(updateData)
         .eq("id", id)
-        .select()
+        .select("*, order_items(*)")
         .single();
 
       if (error) throw error;

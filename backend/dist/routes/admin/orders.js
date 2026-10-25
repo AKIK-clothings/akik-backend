@@ -109,18 +109,21 @@ router.get("/:id", (0, validate_1.validateUuidParam)("id"), async (req, res) => 
 router.patch("/:id/status", (0, validate_1.validateUuidParam)("id"), (0, validate_1.validateBody)(validate_1.adminOrderStatusSchema), async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, notes } = req.body;
+        const { status, paymentStatus, notes } = req.body;
         const updateData = {
-            status,
             updated_at: new Date().toISOString(),
         };
+        if (status !== undefined)
+            updateData.status = status;
+        if (paymentStatus !== undefined)
+            updateData.payment_status = paymentStatus;
         if (notes !== undefined)
             updateData.notes = notes;
         const { data: order, error } = await supabase_1.supabase
             .from("orders")
             .update(updateData)
             .eq("id", id)
-            .select()
+            .select("*, order_items(*)")
             .single();
         if (error)
             throw error;
