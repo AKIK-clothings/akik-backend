@@ -886,26 +886,24 @@ router.post(
         throw itemsError;
       }
 
-      // ── 10. Fallback promo usage increment if atomic RPC was bypassed ───────
-      if (verified.appliedPromoCode && !promoAppliedAtomically) {
+      // ── 10. Background post-order tasks (Non-blocking for instant client response) ──
+      setImmediate(async () => {
         try {
-          await supabase.rpc("increment_promo_usage", {
-            promo_code: verified.appliedPromoCode,
-          });
-        } catch (incErr) {
-          console.warn("Failed fallback promo increment for COD:", incErr);
+          if (verified.appliedPromoCode && !promoAppliedAtomically) {
+            await supabase.rpc("increment_promo_usage", {
+              promo_code: verified.appliedPromoCode,
+            });
+          }
+          await supabase
+            .from("orders")
+            .update({ whatsapp_notified: true })
+            .eq("id", order.id);
+          await decrementInventory(verified.verifiedItems);
+          invalidateStatsOverviewCache();
+        } catch (bgErr) {
+          console.error("Async post-order tasks error for COD:", bgErr);
         }
-      }
-
-      // Mark WhatsApp as notified internally
-      await supabase
-        .from("orders")
-        .update({ whatsapp_notified: true })
-        .eq("id", order.id);
-
-      // Decrement inventory and bust cache
-      await decrementInventory(verified.verifiedItems);
-      invalidateStatsOverviewCache();
+      });
 
       // Build customer WA confirmation URL
       const customerWhatsAppUrl = buildCustomerWhatsAppMessage({

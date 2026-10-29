@@ -716,25 +716,25 @@ router.post("/create-cod-order", rateLimit_1.checkoutLimiter, (0, validate_1.val
             await supabase_1.supabase.from("orders").delete().eq("id", order.id);
             throw itemsError;
         }
-        // ── 10. Fallback promo usage increment if atomic RPC was bypassed ───────
-        if (verified.appliedPromoCode && !promoAppliedAtomically) {
+        // ── 10. Background post-order tasks (Non-blocking for instant client response) ──
+        setImmediate(async () => {
             try {
-                await supabase_1.supabase.rpc("increment_promo_usage", {
-                    promo_code: verified.appliedPromoCode,
-                });
+                if (verified.appliedPromoCode && !promoAppliedAtomically) {
+                    await supabase_1.supabase.rpc("increment_promo_usage", {
+                        promo_code: verified.appliedPromoCode,
+                    });
+                }
+                await supabase_1.supabase
+                    .from("orders")
+                    .update({ whatsapp_notified: true })
+                    .eq("id", order.id);
+                await decrementInventory(verified.verifiedItems);
+                (0, orders_1.invalidateStatsOverviewCache)();
             }
-            catch (incErr) {
-                console.warn("Failed fallback promo increment for COD:", incErr);
+            catch (bgErr) {
+                console.error("Async post-order tasks error for COD:", bgErr);
             }
-        }
-        // Mark WhatsApp as notified internally
-        await supabase_1.supabase
-            .from("orders")
-            .update({ whatsapp_notified: true })
-            .eq("id", order.id);
-        // Decrement inventory and bust cache
-        await decrementInventory(verified.verifiedItems);
-        (0, orders_1.invalidateStatsOverviewCache)();
+        });
         // Build customer WA confirmation URL
         const customerWhatsAppUrl = (0, whatsapp_1.buildCustomerWhatsAppMessage)({
             orderNumber,
