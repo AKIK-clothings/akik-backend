@@ -129,7 +129,7 @@ export default function AdminOrdersPage() {
     const order = orders.find((o) => o.id === orderId);
     // Delivered ⇒ payment collected. For pending COD orders, confirm cash/UPI collection first.
     let markPaid = false;
-    if (newStatus === "delivered" && order && order.payment_status === "pending") {
+    if (newStatus === "delivered" && order && order.payment_status !== "paid") {
       if (order.payment_method === "cod") {
         markPaid = confirm(
           `Mark ${order.order_number} as Delivered?\n\nThis will also mark the COD payment of ₹${order.final_total.toLocaleString("en-IN")} as Collected / Paid.`
@@ -388,7 +388,7 @@ export default function AdminOrdersPage() {
                         ₹{order.final_total.toLocaleString("en-IN")}
                       </p>
 
-                      {order.payment_method === "cod" && order.payment_status !== "paid" && (
+                      {order.payment_method === "cod" && order.payment_status !== "paid" && order.status !== "cancelled" && (
                         <button
                           onClick={() => handleMarkPaymentCollected(order.id)}
                           disabled={updatingPaymentId === order.id}

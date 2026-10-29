@@ -117,12 +117,15 @@ export const CraftProcessShowcase: React.FC = () => {
                   loop
                   muted={isMuted}
                   playsInline
+                  preload="auto"
+                  poster={`${activeStep.videoSrc.replace(/\.[^/.]+$/, ".jpg")}`}
                   initial={{ opacity: 0.2 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0.2 }}
                   transition={{ duration: 0.35 }}
                   className="w-full h-full object-cover"
                 >
+                  <source src={`${activeStep.videoSrc}#t=0.1`} type="video/mp4" />
                   <source src={activeStep.videoSrc} type="video/mp4" />
                 </motion.video>
               </AnimatePresence>

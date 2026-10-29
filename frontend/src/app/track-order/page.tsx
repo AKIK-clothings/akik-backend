@@ -195,7 +195,7 @@ function TrackOrderContent() {
             <input
               type="tel"
               required
-              placeholder="e.g. 9833088958"
+              placeholder="e.g. 9220269593"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="w-full px-4 py-3 text-sm bg-[#FAF9F6] border border-[#EAE5DE] rounded-xl focus:outline-none focus:border-[#C47D5A]"

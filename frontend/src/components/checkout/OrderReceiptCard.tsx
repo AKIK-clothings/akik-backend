@@ -385,7 +385,7 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
       )}
 
       {/* Section 4: Order Credentials & Tracking Info Card */}
-      <div className="bg-[#FAF9F6] rounded-2xl border border-[#EAE5DE] p-5 sm:p-6 shadow-sm mb-6 space-y-4">
+      <div className="bg-[#FAF9F6] rounded-2xl border border-[#EAE5DE] p-5 sm:p-6 shadow-sm mb-6 space-y-4 print:hidden">
         <div className="flex items-center justify-between border-b border-[#EAE5DE] pb-3">
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4 text-[#C47D5A]" />

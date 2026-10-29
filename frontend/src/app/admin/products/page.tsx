@@ -12,7 +12,7 @@ export default function AdminProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [sectionFilter, setSectionFilter] = useState<"all" | "women" | "men">("all");
+  const [sectionFilter, setSectionFilter] = useState<"all" | "active" | "women" | "men" | "hidden">("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,7 +21,11 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     let result = products;
-    if (sectionFilter !== "all") {
+    if (sectionFilter === "active") {
+      result = result.filter((p) => p.is_active);
+    } else if (sectionFilter === "hidden") {
+      result = result.filter((p) => !p.is_active);
+    } else if (sectionFilter !== "all") {
       result = result.filter((p) => (p.section || "women") === sectionFilter);
     }
     if (search.trim()) {
@@ -81,6 +85,8 @@ export default function AdminProductsPage() {
     "satin-lucknowi": "Satin Lucknowi",
   };
 
+  const activeCount = products.filter((p) => p.is_active).length;
+  const hiddenCount = products.filter((p) => !p.is_active).length;
   const womenCount = products.filter((p) => (p.section || "women") === "women").length;
   const menCount = products.filter((p) => p.section === "men").length;
 
@@ -113,7 +119,7 @@ export default function AdminProductsPage() {
 
       {/* Filter Tabs & Search */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 border-b border-[#EAE5DE] pb-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#EAE5DE] pb-2">
           <button
             onClick={() => setSectionFilter("all")}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
@@ -123,6 +129,16 @@ export default function AdminProductsPage() {
             }`}
           >
             All Products ({products.length})
+          </button>
+          <button
+            onClick={() => setSectionFilter("active")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              sectionFilter === "active"
+                ? "bg-[#1A1918] text-white"
+                : "text-[#75706B] hover:text-[#1A1918] hover:bg-[#F5F3F0]"
+            }`}
+          >
+            Active ({activeCount})
           </button>
           <button
             onClick={() => setSectionFilter("women")}
@@ -143,6 +159,16 @@ export default function AdminProductsPage() {
             }`}
           >
             Men ({menCount})
+          </button>
+          <button
+            onClick={() => setSectionFilter("hidden")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              sectionFilter === "hidden"
+                ? "bg-[#1A1918] text-white"
+                : "text-[#75706B] hover:text-[#1A1918] hover:bg-[#F5F3F0]"
+            }`}
+          >
+            Hidden ({hiddenCount})
           </button>
         </div>
 

@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 
@@ -30,10 +31,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [adminName, setAdminName] = useState("Admin");
+  const [isAuthorizing, setIsAuthorizing] = useState(pathname !== "/admin/login");
 
   useEffect(() => {
     // Auth guard
-    if (pathname === "/admin/login") return;
+    if (pathname === "/admin/login") {
+      setIsAuthorizing(false);
+      return;
+    }
     
     // Check session data and token
     const adminData = sessionStorage.getItem("akik_admin_info");
@@ -49,6 +54,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         setAdminName(parsed.name || "Admin");
       } catch { /* ignore */ }
     }
+
+    setIsAuthorizing(false);
 
     // Server-side token validation (cached with SWR to prevent duplicate calls on tab change)
     adminApi
@@ -69,11 +76,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch {
       // ignore
     }
+    sessionStorage.removeItem("akik_admin_token");
+    sessionStorage.removeItem("akik_admin_info");
     router.push("/admin/login");
   };
 
   if (pathname === "/admin/login") {
     return <>{children}</>;
+  }
+
+  if (isAuthorizing) {
+    return (
+      <div className="min-h-screen bg-[#1A1918] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#C47D5A] animate-spin" />
+      </div>
+    );
   }
 
   return (
