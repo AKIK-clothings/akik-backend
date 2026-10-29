@@ -23,7 +23,7 @@ export function buildAdminWhatsAppMessage(order: {
   paymentMethod?: string;
   paymentStatus?: string;
 }): string {
-  const adminNumber = (process.env.ADMIN_WHATSAPP_NUMBER || "919220269593").replace(/\D/g, "");
+  const adminNumber = (process.env.ADMIN_WHATSAPP_NUMBER || "919833889598").replace(/\D/g, "");
 
   const itemLines = order.items
     .map(
@@ -95,7 +95,7 @@ export function buildCustomerWhatsAppMessage(order: {
   paymentStatus?: string;
 }): string {
   // Recipient = boutique business WhatsApp (configurable via BUSINESS_WHATSAPP_NUMBER)
-  const recipient = (process.env.BUSINESS_WHATSAPP_NUMBER || "919220269593").replace(/\D/g, "");
+  const recipient = (process.env.BUSINESS_WHATSAPP_NUMBER || "919833889598").replace(/\D/g, "");
 
   const itemLines = order.items
     .map(

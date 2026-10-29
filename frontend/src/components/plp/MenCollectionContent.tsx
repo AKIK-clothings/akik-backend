@@ -204,6 +204,11 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
   const filteredProducts = useMemo(() => {
     return products
       .filter((product) => {
+        // Strict Section Guard: only men's products in men's collection
+        if (product.section !== "men") {
+          return false;
+        }
+
         // Search term
         if (searchParam) {
           const query = searchParam.toLowerCase();

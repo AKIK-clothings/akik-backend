@@ -25,10 +25,10 @@ export const ANNOUNCEMENT_ITEMS: AnnouncementItem[] = [
   },
   {
     id: "contact-whatsapp",
-    text: "WhatsApp Concierge & Custom Sizing Enquiries: +91 92202 69593",
-    highlightText: "+91 92202 69593",
+    text: "WhatsApp Concierge & Custom Sizing Enquiries: +91 98338 89598",
+    highlightText: "+91 98338 89598",
     badge: "WhatsApp",
-    link: "https://wa.me/919220269593",
+    link: "https://wa.me/919833889598",
   },
   {
     id: "contact-instagram",

@@ -194,6 +194,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
       } else if (typeof sm.total === "number") {
         availableInventory = Math.max(1, sm.total);
       }
+    } else if (typeof (product as any).stock === "number") {
+      availableInventory = Math.max(1, (product as any).stock);
     }
 
     setCart((prevCart) => {

@@ -269,7 +269,12 @@ function CollectionsContent() {
           .trim()
           .toLowerCase()
           .replace(/[\s_-]+/g, "-");
-        if (!normalizedSelectedSubs.includes(productSub)) {
+        // Map "scarves" to match Scarf Dupattas products categorized under "dupattas"
+        const isMatch =
+          normalizedSelectedSubs.includes(productSub) ||
+          (normalizedSelectedSubs.includes("scarves") &&
+            (productSub === "dupattas" || product.name.toLowerCase().includes("scarf")));
+        if (!isMatch) {
           return false;
         }
       }

@@ -32,6 +32,7 @@ export const Header: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const openTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pathname = usePathname();
 
   const { wishlistCount, totalItemCount, openCart } = useCart();
@@ -70,14 +71,22 @@ export const Header: React.FC = () => {
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
     }
+    if (openTimeoutRef.current) {
+      clearTimeout(openTimeoutRef.current);
+    }
     if (!cat.subcategories || cat.subcategories.length === 0) {
       setActiveCategory(null);
       return;
     }
-    setActiveCategory(cat);
+    openTimeoutRef.current = setTimeout(() => {
+      setActiveCategory(cat);
+    }, 150);
   };
 
   const handleMouseLeave = () => {
+    if (openTimeoutRef.current) {
+      clearTimeout(openTimeoutRef.current);
+    }
     closeTimeoutRef.current = setTimeout(() => {
       setActiveCategory(null);
     }, 180);
@@ -86,6 +95,9 @@ export const Header: React.FC = () => {
   const cancelClose = () => {
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
+    }
+    if (openTimeoutRef.current) {
+      clearTimeout(openTimeoutRef.current);
     }
   };
 

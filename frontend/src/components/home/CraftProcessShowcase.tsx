@@ -20,6 +20,7 @@ interface ProcessStep {
   subtitle: string;
   description: string;
   videoSrc: string;
+  poster: string;
   duration: string;
   stepNumber: string;
   tag: string;
@@ -32,7 +33,8 @@ const PROCESS_STEPS: ProcessStep[] = [
     subtitle: "Artisanal Fabric Crafting",
     description:
       "Witness our master artisans crafting luxury boutique fabrics from raw spun yarns through time-honored traditional techniques.",
-    videoSrc: "https://res.cloudinary.com/suxqbbxr/video/upload/v1789927781/cloth_making_process.mp4",
+    videoSrc: "/desktop_background.mp4",
+    poster: "/home_background.png",
     duration: "0:25",
     stepNumber: "01",
     tag: "Cloth Making",
@@ -43,7 +45,8 @@ const PROCESS_STEPS: ProcessStep[] = [
     subtitle: "Tested Metallic Thread Embroidery",
     description:
       "Traditional Kadhwa and Dabka embroidery techniques executed stitch by stitch using fine metallic zari ribbons and antique bullion wires.",
-    videoSrc: "https://res.cloudinary.com/suxqbbxr/video/upload/v1789927783/cloth_making_reel_2.mp4",
+    videoSrc: "/windows_background.mp4",
+    poster: "/images/luxury-cotton-satin/gilded-noir.jpeg",
     duration: "0:34",
     stepNumber: "02",
     tag: "Artisanal Detailing",
@@ -108,7 +111,10 @@ export const CraftProcessShowcase: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           {/* Main Cinematic Video Player (7 Columns) */}
           <div className="lg:col-span-7 flex flex-col justify-between">
-            <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-2xl overflow-hidden bg-black/80 border border-white/15 shadow-2xl group">
+            <div
+              className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-2xl overflow-hidden bg-black/80 border border-white/15 shadow-2xl group cursor-pointer"
+              onClick={togglePlay}
+            >
               <AnimatePresence mode="wait">
                 <motion.video
                   key={activeStep.videoSrc}
@@ -118,7 +124,7 @@ export const CraftProcessShowcase: React.FC = () => {
                   muted={isMuted}
                   playsInline
                   preload="auto"
-                  poster={`${activeStep.videoSrc.replace(/\.[^/.]+$/, ".jpg")}`}
+                  poster={activeStep.poster}
                   initial={{ opacity: 0.2 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0.2 }}
@@ -129,6 +135,15 @@ export const CraftProcessShowcase: React.FC = () => {
                   <source src={activeStep.videoSrc} type="video/mp4" />
                 </motion.video>
               </AnimatePresence>
+
+              {/* Center Play Button Overlay when paused */}
+              {!isPlaying && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[2px] transition-all">
+                  <div className="w-16 h-16 rounded-full bg-[#C47D5A] text-white flex items-center justify-center shadow-2xl hover:scale-110 transition-transform">
+                    <Play className="w-8 h-8 ml-1" />
+                  </div>
+                </div>
+              )}
 
               {/* Video Overlay Info Banner */}
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2">

@@ -582,9 +582,15 @@ export default function ProductDetailPage() {
                       Only 1 quantity
                     </span>
                   )}
-                  <span className="px-2.5 py-1 bg-white border border-[#EAE5DE] text-[10px] font-bold uppercase tracking-wider text-[#C47D5A] rounded shadow-sm">
-                    {product.section === "men" ? "Kurta Cut" : "Free Size Cut"}
-                  </span>
+                  {isFullySoldOut || isColorSoldOut || isSizeOutOfStock ? (
+                    <span className="px-2.5 py-1 bg-red-50 border border-red-200 text-[10px] font-bold uppercase tracking-wider text-red-700 rounded shadow-sm">
+                      {product.section === "men" ? "Kurta Cut Sold Out" : "Free Size Sold Out"}
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 bg-white border border-[#EAE5DE] text-[10px] font-bold uppercase tracking-wider text-[#C47D5A] rounded shadow-sm">
+                      {product.section === "men" ? "Kurta Cut" : "Free Size"}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
