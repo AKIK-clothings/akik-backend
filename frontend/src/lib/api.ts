@@ -622,8 +622,8 @@ export const adminApi = {
       { staleTimeMs: 30 * 1000 }
     ),
 
-  updateOrderStatus: async (id: string, status: string, notes?: string) => {
-    const res = await adminApi.request(`/api/admin/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, notes }) });
+  updateOrderStatus: async (id: string, status: string, notes?: string, paymentStatus?: string) => {
+    const res = await adminApi.request(`/api/admin/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, notes, paymentStatus }) });
     memoryCache.invalidate("admin:orders");
     memoryCache.invalidate("admin:stats");
     return res;

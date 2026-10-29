@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_status        TEXT DEFAULT 'pending'
                         CHECK (payment_status IN ('pending','paid','failed','refunded')),
   status                TEXT DEFAULT 'new'
-                        CHECK (status IN ('new','confirmed','dispatched','delivered','cancelled')),
+                        CHECK (status IN ('new','confirmed','tailoring','dispatched','delivered','cancelled')),
   whatsapp_notified     BOOLEAN DEFAULT false,
   notes                 TEXT,
   created_at            TIMESTAMPTZ DEFAULT now(),

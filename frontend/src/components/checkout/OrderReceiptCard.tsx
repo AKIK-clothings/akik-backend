@@ -130,9 +130,9 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
   const statusInfo = getStatusText(order.status);
 
   return (
-    <div className="w-full max-w-xl mx-auto font-sans text-[#1F1E1D]">
+    <div className="w-full max-w-xl mx-auto font-sans text-[#1F1E1D] print:max-w-none print:text-black">
       {/* Printable Invoice Header (Hidden on screen, shown when printed) */}
-      <div className="hidden print:block mb-8 pb-6 border-b border-gray-300">
+      <div className="hidden print:block mb-4 pb-4 border-b border-gray-300">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-serif font-bold text-black">AKIK by Hafsa Khatri</h1>
@@ -154,7 +154,7 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
       </div>
 
       {/* Brand Header */}
-      <div className="text-left mb-4 px-1 flex items-center justify-between">
+      <div className="text-left mb-4 px-1 flex items-center justify-between print:hidden">
         <div>
           <Link href="/" className="inline-block">
             <span className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#1F1E1D]">
@@ -180,7 +180,7 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
         {/* Accordion Bar */}
         <div
           onClick={() => setIsSummaryOpen(!isSummaryOpen)}
-          className="w-full px-5 py-4 flex items-center justify-between border-b border-[#EAE5DE] cursor-pointer hover:bg-gray-50/50 transition-colors select-none"
+          className="w-full px-5 py-4 flex items-center justify-between border-b border-[#EAE5DE] cursor-pointer hover:bg-gray-50/50 transition-colors select-none print:py-2"
         >
           <div className="flex items-center gap-1.5 text-sm font-medium text-[#1E6091] hover:underline">
             <span>Order summary</span>
@@ -202,9 +202,9 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
           </div>
         </div>
 
-        {/* Collapsible Content */}
-        {isSummaryOpen && (
-          <div className="p-5 sm:p-6 space-y-4 animate-fade-in">
+        {/* Collapsible Content (always rendered in print so the bill lists every item) */}
+        {(
+          <div className={`p-5 sm:p-6 space-y-4 animate-fade-in print:p-4 print:space-y-3 ${isSummaryOpen ? "" : "hidden print:block"}`}>
             {/* Items List */}
             <div className="space-y-4">
               {order.items.map((item, idx) => {
@@ -342,7 +342,7 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
       </div>
 
       {/* Section 2: Thank You Header with Checkmark (Exact Match to Reference Image) */}
-      <div className="flex items-center gap-4 mb-5 px-1">
+      <div className="flex items-center gap-4 mb-5 px-1 print:hidden">
         {/* Circle Checkmark Icon */}
         <div className="w-12 h-12 rounded-full border-2 border-[#1E6091] flex items-center justify-center text-[#1E6091] shrink-0 bg-blue-50/40">
           <Check className="w-6 h-6 stroke-[2.5]" />
@@ -358,7 +358,7 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
       </div>
 
       {/* Section 3: Status Message Card (Exact Match to Reference Image) */}
-      <div className="bg-white rounded-2xl border border-[#EAE5DE] p-5 sm:p-6 shadow-sm mb-6 space-y-1">
+      <div className="bg-white rounded-2xl border border-[#EAE5DE] p-5 sm:p-6 shadow-sm mb-6 space-y-1 print:hidden">
         <h3 className="text-base font-bold text-[#1F1E1D]">
           {statusInfo.title}
         </h3>
@@ -414,7 +414,7 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
               <button
                 type="button"
                 onClick={handleCopyOrderNumber}
-                className="text-[#75706B] hover:text-[#C47D5A] transition-colors p-1"
+                className="text-[#75706B] hover:text-[#C47D5A] transition-colors p-1 print:hidden"
                 title="Copy order number"
               >
                 {copied ? <CheckCheck className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
@@ -441,7 +441,7 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
           </div>
         )}
 
-        <div className="bg-blue-50/60 border border-blue-200/80 rounded-xl p-3 text-xs text-[#1E6091] flex items-start gap-2">
+        <div className="bg-blue-50/60 border border-blue-200/80 rounded-xl p-3 text-xs text-[#1E6091] flex items-start gap-2 print:hidden">
           <Sparkles className="w-4 h-4 shrink-0 mt-0.5 text-[#1E6091]" />
           <p className="leading-relaxed">
             <strong>No login or password needed.</strong> Save your Order Number ({order.orderNumber}) and mobile number to check live tailoring & dispatch progress anytime.
@@ -461,8 +461,8 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
           )}
 
           <a
-            href={`https://wa.me/${CONTACT_INFO.phoneRaw}?text=${encodeURIComponent(
-              `Hi AKIK, I have placed order ${order.orderNumber} for ₹${order.finalTotal}. Could you please confirm and share tailoring updates? Thank you!`
+            href={`https://api.whatsapp.com/send?phone=919220269593&text=${encodeURIComponent(
+              `✅ *Order Confirmed — AKIK by Hafsa Khatri* ✨\nOrder No: ${order.orderNumber}\nCustomer: ${order.customerName}\nTotal: ₹${order.finalTotal.toLocaleString("en-IN")} (${isCod ? "Cash on Delivery" : "Online Payment"})\n\nHi AKIK, I have placed order ${order.orderNumber} for ₹${order.finalTotal}. Could you please confirm and share tailoring updates? Thank you!`
             )}`}
             target="_blank"
             rel="noopener noreferrer"

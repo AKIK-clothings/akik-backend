@@ -14,7 +14,9 @@ import {
   ArrowRight,
   Package,
 } from "lucide-react";
-import { NAVIGATION_CATEGORIES } from "@/data/navigationData";
+import { NAVIGATION_CATEGORIES, buildNavigationCategories } from "@/data/navigationData";
+import { MegaMenuCategory } from "@/types/navigation";
+import { api } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { WhatsAppIcon, InstagramIcon } from "@/components/ui/Icons";
 import { CONTACT_INFO } from "@/data/contactInfo";
@@ -29,6 +31,22 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
     "embroidered-satin": true, // open first by default
   });
   const { wishlistCount, totalItemCount, openCart } = useCart();
+  const [navCategories, setNavCategories] = useState<MegaMenuCategory[]>(NAVIGATION_CATEGORIES);
+
+  useEffect(() => {
+    let mounted = true;
+    api
+      .getProducts()
+      .then((products) => {
+        if (mounted && products && products.length > 0) {
+          setNavCategories(buildNavigationCategories(products));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Close on Escape key
   useEffect(() => {
@@ -114,7 +132,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
 
             {/* Scrollable Navigation Body */}
             <div className="flex-1 overflow-y-auto px-4 py-3 divide-y divide-[#EAE5DE]/70">
-              {NAVIGATION_CATEGORIES.map((category) => {
+              {navCategories.map((category) => {
                 const isExpanded = !!expandedCategories[category.id];
 
                 return (

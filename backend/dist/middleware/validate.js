@@ -146,7 +146,9 @@ exports.adminPromoUpdateSchema = exports.adminPromoCreateSchema.partial();
 // ─── Admin Order Schemas (HIGH-07) ─────────────────────────────────────────────
 exports.adminOrderStatusSchema = zod_1.z
     .object({
-    status: zod_1.z.enum(["new", "confirmed", "processing", "tailoring", "dispatched", "delivered", "cancelled"]).optional(),
+    // Must match orders_status_check (migration 003) + /track-order milestones:
+    // new=Order Placed, confirmed=Confirmed, tailoring=In Tailoring, dispatched, delivered, cancelled
+    status: zod_1.z.enum(["new", "confirmed", "tailoring", "dispatched", "delivered", "cancelled"]).optional(),
     paymentStatus: zod_1.z.enum(["pending", "paid", "failed", "refunded"]).optional(),
     notes: zod_1.z.string().trim().max(1000).optional().nullable(),
 })

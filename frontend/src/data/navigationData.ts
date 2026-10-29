@@ -39,6 +39,66 @@ export const ANNOUNCEMENT_ITEMS: AnnouncementItem[] = [
   },
 ];
 
+export const STITCHED_SUBCATEGORY_META: Record<
+  string,
+  { description: string; badge?: string }
+> = {
+  "Embroidered Satin with Dupatta": {
+    description: "Readymade designer ensembles tailored to perfection",
+  },
+  "Luxury Cotton Satin": {
+    description: "Bespoke ready-to-wear silhouettes in breathable premium satin",
+  },
+  "Satin Lucknowi Collection": {
+    description: "Exquisite handcrafted Chikankari stitched sets",
+  },
+  "Rose Royale Collection": {
+    description: "Signature royal floral motifs with luxury drape",
+    badge: "Exclusive",
+  },
+  "PURE COTTON SUITS": {
+    description: "Breathable pure cotton tailored suit sets",
+  },
+};
+
+export function buildNavigationCategories(
+  products?: Array<{ category?: string; subcategory?: string; section?: string }>
+): MegaMenuCategory[] {
+  if (!products || products.length === 0) return NAVIGATION_CATEGORIES;
+
+  const stitchedSubNames = Array.from(
+    new Set(
+      products
+        .filter(
+          (p) =>
+            (p.section || "women") === "women" &&
+            p.category?.toLowerCase() === "stitched" &&
+            p.subcategory?.trim()
+        )
+        .map((p) => p.subcategory!.trim())
+    )
+  );
+
+  if (stitchedSubNames.length === 0) return NAVIGATION_CATEGORIES;
+
+  return NAVIGATION_CATEGORIES.map((cat) => {
+    if (cat.id !== "stitched") return cat;
+    return {
+      ...cat,
+      subcategories: stitchedSubNames.map((subName) => {
+        const meta = STITCHED_SUBCATEGORY_META[subName];
+        return {
+          title: subName,
+          href: `/collections?collection=stitched&sub=${encodeURIComponent(subName)}`,
+          description:
+            meta?.description || "Readymade designer ensembles tailored to perfection",
+          ...(meta?.badge ? { badge: meta.badge } : {}),
+        };
+      }),
+    };
+  });
+}
+
 export const NAVIGATION_CATEGORIES: MegaMenuCategory[] = [
   {
     id: "stitched",
@@ -49,22 +109,6 @@ export const NAVIGATION_CATEGORIES: MegaMenuCategory[] = [
         title: "Embroidered Satin with Dupatta",
         href: "/collections?collection=stitched&sub=Embroidered+Satin+with+Dupatta",
         description: "Readymade designer ensembles tailored to perfection",
-      },
-      {
-        title: "Luxury Cotton Satin",
-        href: "/collections?collection=stitched&sub=Luxury+Cotton+Satin",
-        description: "Bespoke ready-to-wear silhouettes in breathable premium satin",
-      },
-      {
-        title: "Satin Lucknowi Collection",
-        href: "/collections?collection=stitched&sub=Satin+Lucknowi+Collection",
-        description: "Exquisite handcrafted Chikankari stitched sets",
-      },
-      {
-        title: "Rose Royale Collection",
-        href: "/collections?collection=stitched&sub=Rose+Royale+Collection",
-        description: "Signature royal floral motifs with luxury drape",
-        badge: "Exclusive",
       },
     ],
     featuredCard: {
@@ -202,8 +246,8 @@ export const NAVIGATION_CATEGORIES: MegaMenuCategory[] = [
         description: "Breathable, sophisticated unstitched pure cotton fabrics",
       },
       {
-        title: "Premium cotton self designed",
-        href: "/men/kurta-sets?sub=Premium+cotton+self+designed",
+        title: "Premium Cotton Self Designed",
+        href: "/men/kurta-sets?sub=Premium+Cotton+Self+Designed",
         description: "Intricately woven self-textured unstitched cotton fabrics",
       },
     ],

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
@@ -10,17 +10,51 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync browser-autofilled values that may populate the DOM without firing React's onChange
+  useEffect(() => {
+    const syncAutofill = () => {
+      if (emailInputRef.current?.value) setEmail(emailInputRef.current.value);
+      if (passwordInputRef.current?.value) setPassword(passwordInputRef.current.value);
+    };
+    syncAutofill();
+    const timer = setTimeout(syncAutofill, 150);
+    return () => clearTimeout(timer);
+  }, []);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    // Read directly from DOM inputs / FormData first so browser autofill works on the very first click
+    const formData = new FormData(e.currentTarget);
+    const rawEmail =
+      emailInputRef.current?.value ||
+      String(formData.get("email") || "") ||
+      email;
+    const rawPassword =
+      passwordInputRef.current?.value ||
+      String(formData.get("password") || "") ||
+      password;
+
+    const cleanEmail = rawEmail.trim().toLowerCase();
+    const cleanPassword = rawPassword.trim();
+
+    if (cleanEmail !== email) setEmail(rawEmail);
+    if (cleanPassword !== password) setPassword(rawPassword);
+
+    if (!cleanEmail || !cleanPassword) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanPassword = password.trim();
       const { token, admin } = await adminApi.login(cleanEmail, cleanPassword);
       if (token) {
         sessionStorage.setItem("akik_admin_token", token);
@@ -67,9 +101,13 @@ export default function AdminLoginPage() {
                 Email Address
               </label>
               <input
+                ref={emailInputRef}
+                id="admin-email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
                 required
                 autoComplete="email"
                 placeholder="hafsa@akikbyhafsakhatri.in"
@@ -83,9 +121,13 @@ export default function AdminLoginPage() {
               </label>
               <div className="relative">
                 <input
+                  ref={passwordInputRef}
+                  id="admin-password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
                   required
                   autoComplete="current-password"
                   placeholder="••••••••"

@@ -157,6 +157,18 @@ router.patch(
       if (paymentStatus !== undefined) updateData.payment_status = paymentStatus;
       if (notes !== undefined) updateData.notes = notes;
 
+      // Delivered ⇒ payment collected. If the caller didn't specify a payment status,
+      // flip a still-pending payment (COD) to 'paid' so tracking never shows
+      // "Delivered" alongside "Payment: Pending".
+      if (status === "delivered" && paymentStatus === undefined) {
+        const { error: payErr } = await supabase
+          .from("orders")
+          .update({ payment_status: "paid" })
+          .eq("id", id)
+          .eq("payment_status", "pending");
+        if (payErr) throw payErr;
+      }
+
       const { data: order, error } = await supabase
         .from("orders")
         .update(updateData)

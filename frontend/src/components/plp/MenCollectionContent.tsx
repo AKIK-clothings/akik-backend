@@ -30,7 +30,7 @@ const FALLBACK_MEN_SUBCATEGORIES = [
   "Kurta Sets",
   "Shirt Fabric",
   "Premium Cotton Plain",
-  "Premium cotton self designed",
+  "Premium Cotton Self Designed",
 ];
 
 export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenCollectionContentProps) {
@@ -44,7 +44,26 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
 
   // Read URL query parameters
   const collectionParam = searchParams.get("collection") || defaultCategory;
-  const subParam = searchParams.getAll("sub");
+  const urlSubParamKey = searchParams.getAll("sub").join("|");
+  const urlSubParam = useMemo(() => {
+    const raw = searchParams
+      .getAll("sub")
+      .flatMap((s) => s.split(","))
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const seen = new Set<string>();
+    return raw.filter((s) => {
+      const k = s.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, [urlSubParamKey]);
+
+  const [subParam, setSubParam] = useState<string[]>(urlSubParam);
+  useEffect(() => {
+    setSubParam(urlSubParam);
+  }, [urlSubParam]);
   const colorParam = searchParams.getAll("color");
   const stockParam = searchParams.get("inStock") === "true";
   const minPriceParam = searchParams.get("minPrice") !== null ? Number(searchParams.get("minPrice")) : 0;
@@ -54,12 +73,16 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
   const wishlistParam = searchParams.get("wishlist") === "true";
 
   const updateUrlParams = (updater: (params: URLSearchParams) => void) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const currentSearch =
+      typeof window !== "undefined" ? window.location.search : searchParams.toString();
+    const params = new URLSearchParams(currentSearch);
     updater(params);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
   const handleSelectCollection = (col: string) => {
+    setSubParam([]);
     updateUrlParams((params) => {
       if (col === "all") params.delete("collection");
       else params.set("collection", col);
@@ -68,14 +91,17 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
   };
 
   const handleToggleSubcategory = (sub: string) => {
-    updateUrlParams((params) => {
-      const current = params.getAll("sub");
-      params.delete("sub");
-      if (current.includes(sub)) {
-        current.filter((s) => s !== sub).forEach((s) => params.append("sub", s));
-      } else {
-        [...current, sub].forEach((s) => params.append("sub", s));
-      }
+    const target = sub.trim().toLowerCase();
+    setSubParam((prev) => {
+      const exists = prev.some((s) => s.trim().toLowerCase() === target);
+      const next = exists
+        ? prev.filter((s) => s.trim().toLowerCase() !== target)
+        : [...prev, sub.trim()];
+      updateUrlParams((params) => {
+        params.delete("sub");
+        next.forEach((s) => params.append("sub", s));
+      });
+      return next;
     });
   };
 
@@ -119,6 +145,7 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
   };
 
   const handleResetFilters = () => {
+    setSubParam([]);
     router.push(pathname, { scroll: false });
   };
 
@@ -191,10 +218,15 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
           return false;
         }
 
-        // Subcategory filter (case-insensitive)
+        // Subcategory filter (case-insensitive & slug-normalized OR match)
         if (subParam.length > 0) {
-          const normalizedSelectedSubs = subParam.map((s) => s.trim().toLowerCase());
-          const productSub = (product.subcategory || "").trim().toLowerCase();
+          const normalizedSelectedSubs = subParam.map((s) =>
+            s.trim().toLowerCase().replace(/[\s_-]+/g, "-")
+          );
+          const productSub = (product.subcategory || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[\s_-]+/g, "-");
           if (!normalizedSelectedSubs.includes(productSub)) {
             return false;
           }

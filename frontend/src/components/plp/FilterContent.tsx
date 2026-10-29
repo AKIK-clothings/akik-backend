@@ -40,7 +40,7 @@ const MEN_DEFAULT_SUBCATEGORIES = [
   "Kurta Sets",
   "Shirt Fabric",
   "Premium Cotton Plain",
-  "Premium cotton self designed",
+  "Premium Cotton Self Designed",
 ];
 
 const ALL_SIZES: ApparelSize[] = ["S", "M", "L", "XL", "XXL", "XXXL"];
@@ -63,7 +63,7 @@ export const FilterContent: React.FC<FilterContentProps> = ({
   onResetFilters,
   hasActiveFilters,
 }) => {
-  const availableSubs =
+  const baseSubs =
     selectedCollection === "dupattas"
       ? (subcategoriesList && subcategoriesList.length > 0
           ? Array.from(new Set([...DUPATTAS_DEFAULT_SUBCATEGORIES, ...subcategoriesList.filter((s) => !SHARED_SUBCATEGORIES.includes(s) && !MEN_DEFAULT_SUBCATEGORIES.includes(s))]))
@@ -73,6 +73,22 @@ export const FilterContent: React.FC<FilterContentProps> = ({
       : section === "men"
       ? MEN_DEFAULT_SUBCATEGORIES
       : SHARED_SUBCATEGORIES;
+
+  // Ensure any active URL subcategories are present and deduplicate case-insensitively
+  const availableSubs = React.useMemo(() => {
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    for (const s of [...baseSubs, ...selectedSubcategories]) {
+      const trimmed = s.trim();
+      if (!trimmed) continue;
+      const key = trimmed.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(trimmed);
+      }
+    }
+    return merged;
+  }, [baseSubs, selectedSubcategories]);
 
   const collectionOptions =
     section === "men"
@@ -144,7 +160,9 @@ export const FilterContent: React.FC<FilterContentProps> = ({
         </h4>
         <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
           {availableSubs.map((sub) => {
-            const isChecked = selectedSubcategories.includes(sub);
+            const isChecked = selectedSubcategories.some(
+              (s) => s.trim().toLowerCase() === sub.trim().toLowerCase()
+            );
             return (
               <label
                 key={sub}

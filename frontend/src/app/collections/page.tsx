@@ -28,9 +28,28 @@ function CollectionsContent() {
   // Mobile Bottom Sheet state
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // Read URL query parameters
+  // Read URL query parameters (supports repeated ?sub=A&sub=B and comma-separated ?sub=A,B)
   const collectionParam = searchParams.get("collection") || "all";
-  const subParam = searchParams.getAll("sub");
+  const urlSubParamKey = searchParams.getAll("sub").join("|");
+  const urlSubParam = useMemo(() => {
+    const raw = searchParams
+      .getAll("sub")
+      .flatMap((s) => s.split(","))
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const seen = new Set<string>();
+    return raw.filter((s) => {
+      const k = s.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, [urlSubParamKey]);
+
+  const [subParam, setSubParam] = useState<string[]>(urlSubParam);
+  useEffect(() => {
+    setSubParam(urlSubParam);
+  }, [urlSubParam]);
   const sizeParam = searchParams.getAll("size") as ApparelSize[];
   const colorParam = searchParams.getAll("color");
   const stockParam = searchParams.get("inStock") === "true";
@@ -43,13 +62,17 @@ function CollectionsContent() {
 
   // Helper to push updated query parameters to the URL
   const updateUrlParams = (updater: (params: URLSearchParams) => void) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const currentSearch =
+      typeof window !== "undefined" ? window.location.search : searchParams.toString();
+    const params = new URLSearchParams(currentSearch);
     updater(params);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
-  // State update handlers sync directly to URL
+  // State update handlers sync directly to local state + URL
   const handleSelectCollection = (col: string) => {
+    setSubParam([]);
     updateUrlParams((params) => {
       if (col === "all") params.delete("collection");
       else params.set("collection", col);
@@ -58,14 +81,17 @@ function CollectionsContent() {
   };
 
   const handleToggleSubcategory = (sub: string) => {
-    updateUrlParams((params) => {
-      const current = params.getAll("sub");
-      params.delete("sub");
-      if (current.includes(sub)) {
-        current.filter((s) => s !== sub).forEach((s) => params.append("sub", s));
-      } else {
-        [...current, sub].forEach((s) => params.append("sub", s));
-      }
+    const target = sub.trim().toLowerCase();
+    setSubParam((prev) => {
+      const exists = prev.some((s) => s.trim().toLowerCase() === target);
+      const next = exists
+        ? prev.filter((s) => s.trim().toLowerCase() !== target)
+        : [...prev, sub.trim()];
+      updateUrlParams((params) => {
+        params.delete("sub");
+        next.forEach((s) => params.append("sub", s));
+      });
+      return next;
     });
   };
 
@@ -121,6 +147,7 @@ function CollectionsContent() {
   };
 
   const handleResetFilters = () => {
+    setSubParam([]);
     router.push(pathname, { scroll: false });
   };
 
@@ -204,15 +231,44 @@ function CollectionsContent() {
           ) {
             return false;
           }
+        } else if (collectionParam === "dupattas") {
+          const pSubLower = (product.subcategory || "").trim().toLowerCase();
+          if (
+            product.category !== "dupattas" &&
+            pSubLower !== "dupattas" &&
+            pSubLower !== "scarves"
+          ) {
+            return false;
+          }
         } else if (product.category !== collectionParam) {
-          return false;
+          // If user navigated via ?collection=stitched&sub=X where X has no stitched items
+          // (or checked an unstitched subcategory while on stitched), allow OR match on selected sub
+          const pSubNorm = (product.subcategory || "").trim().toLowerCase().replace(/[\s_-]+/g, "-");
+          const matchesSelectedSub =
+            subParam.length > 0 &&
+            subParam.some((s) => s.trim().toLowerCase().replace(/[\s_-]+/g, "-") === pSubNorm);
+          const hasCollectionMatchForSub =
+            matchesSelectedSub &&
+            products.some(
+              (p) =>
+                p.category === collectionParam &&
+                (p.subcategory || "").trim().toLowerCase().replace(/[\s_-]+/g, "-") === pSubNorm
+            );
+          if (!matchesSelectedSub || hasCollectionMatchForSub) {
+            return false;
+          }
         }
       }
 
-      // Subcategory multi-select (case-insensitive)
+      // Subcategory multi-select OR match (case-insensitive & slug-normalized)
       if (subParam.length > 0) {
-        const normalizedSelectedSubs = subParam.map((s) => s.trim().toLowerCase());
-        const productSub = (product.subcategory || "").trim().toLowerCase();
+        const normalizedSelectedSubs = subParam.map((s) =>
+          s.trim().toLowerCase().replace(/[\s_-]+/g, "-")
+        );
+        const productSub = (product.subcategory || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[\s_-]+/g, "-");
         if (!normalizedSelectedSubs.includes(productSub)) {
           return false;
         }

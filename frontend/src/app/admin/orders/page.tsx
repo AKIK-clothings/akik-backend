@@ -53,7 +53,21 @@ const getColorInfo = (color?: OrderItem["selected_color"]) => {
   return null;
 };
 
-const STATUS_OPTIONS = ["new", "confirmed", "processing", "tailoring", "dispatched", "delivered", "cancelled"];
+// Values MUST match the `orders_status_check` DB constraint (migration 003) and the
+// customer /track-order milestones. Labels mirror the milestone titles.
+const STATUS_OPTIONS = ["new", "confirmed", "tailoring", "dispatched", "delivered", "cancelled"] as const;
+
+const STATUS_LABELS: Record<string, string> = {
+  new: "Order Placed",
+  confirmed: "Confirmed",
+  processing: "In Tailoring", // legacy value
+  tailoring: "In Tailoring",
+  dispatched: "Dispatched",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+const getStatusLabel = (s: string) => STATUS_LABELS[s] || s.charAt(0).toUpperCase() + s.slice(1);
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-100 text-blue-700",
@@ -112,12 +126,39 @@ export default function AdminOrdersPage() {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
+    const order = orders.find((o) => o.id === orderId);
+    // Delivered ⇒ payment collected. For pending COD orders, confirm cash/UPI collection first.
+    let markPaid = false;
+    if (newStatus === "delivered" && order && order.payment_status === "pending") {
+      if (order.payment_method === "cod") {
+        markPaid = confirm(
+          `Mark ${order.order_number} as Delivered?\n\nThis will also mark the COD payment of ₹${order.final_total.toLocaleString("en-IN")} as Collected / Paid.`
+        );
+        if (!markPaid) return;
+      } else {
+        markPaid = true;
+      }
+    }
+
     setUpdatingId(orderId);
     try {
-      await adminApi.updateOrderStatus(orderId, newStatus);
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)));
+      const res = (await adminApi.updateOrderStatus(orderId, newStatus, undefined, markPaid ? "paid" : undefined)) as {
+        order?: { status?: string; payment_status?: string };
+      };
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                status: res?.order?.status ?? newStatus,
+                payment_status: res?.order?.payment_status ?? (markPaid ? "paid" : o.payment_status),
+              }
+            : o
+        )
+      );
     } catch (err) {
-      alert("Failed to update status");
+      const msg = err instanceof Error && err.message ? `: ${err.message}` : "";
+      alert(`Failed to update status${msg}`);
       console.error(err);
     } finally {
       setUpdatingId(null);
@@ -192,7 +233,7 @@ export default function AdminOrdersPage() {
           >
             <option value="all">All Statuses</option>
             {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+              <option key={s} value={s}>{getStatusLabel(s)}</option>
             ))}
           </select>
 
@@ -258,7 +299,7 @@ export default function AdminOrdersPage() {
                             STATUS_COLORS[order.status] || "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {order.status}
+                          {getStatusLabel(order.status)}
                         </span>
 
                         {/* Payment Method Badge */}
@@ -370,9 +411,13 @@ export default function AdminOrdersPage() {
                           disabled={updatingId === order.id}
                           className="pl-3 pr-8 py-2 bg-[#F5F3F0] border border-[#EAE5DE] rounded-lg text-xs font-medium focus:outline-none focus:border-[#C47D5A] disabled:opacity-60 appearance-none cursor-pointer"
                         >
+                          {/* Legacy value (e.g. "processing") not in the list → keep it selectable so the select isn't blank */}
+                          {!(STATUS_OPTIONS as readonly string[]).includes(order.status) && (
+                            <option value={order.status}>{getStatusLabel(order.status)}</option>
+                          )}
                           {STATUS_OPTIONS.map((s) => (
                             <option key={s} value={s}>
-                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                              {getStatusLabel(s)}
                             </option>
                           ))}
                         </select>

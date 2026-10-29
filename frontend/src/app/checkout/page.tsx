@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,10 +36,29 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
 
-  // Redirect to collections if cart is empty
+  // Set once an order is successfully placed so that clearing the cart does not
+  // trigger the "empty cart → /collections" redirect below (race with track-order redirect).
+  const orderPlacedRef = useRef(false);
+
+  // Redirect to collections if cart is empty (but never right after placing an order)
   useEffect(() => {
-    if (cart.length === 0) router.push("/collections");
+    if (cart.length === 0 && !orderPlacedRef.current) router.push("/collections");
   }, [cart, router]);
+
+  /**
+   * After a successful order, send the user straight to the tracking page which renders
+   * the order confirmation, bill and WhatsApp button. We deliberately do NOT call
+   * window.open() here: it runs after an await (no user gesture) and is blocked by
+   * Chrome's popup blocker.
+   */
+  const redirectToTracking = (orderNumber: string) => {
+    orderPlacedRef.current = true;
+    const cleanPhone = form.phone.replace(/\D/g, "").slice(-10);
+    router.replace(
+      `/track-order?order=${encodeURIComponent(orderNumber)}&phone=${encodeURIComponent(cleanPhone)}`
+    );
+    clearCart();
+  };
 
   // Load Razorpay script
   useEffect(() => {
@@ -173,7 +192,7 @@ export default function CheckoutPage() {
       // COD Path: Create order directly with pending payment status
       if (paymentMethod === "cod") {
         const idempotencyKey = `akik_cod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const { orderNumber, customerWhatsAppUrl } = await api.createCodOrder({
+        const { orderNumber } = await api.createCodOrder({
           items: checkoutItems,
           customer: form,
           subtotal: orderSummary.subtotal,
@@ -183,15 +202,7 @@ export default function CheckoutPage() {
           idempotencyKey,
         });
 
-        if (customerWhatsAppUrl) {
-          window.open(customerWhatsAppUrl, "_blank", "noopener,noreferrer");
-        }
-
-        clearCart();
-        const cleanPhone = form.phone.replace(/\D/g, "").slice(-10);
-        const phoneParam = cleanPhone ? `&phone=${encodeURIComponent(cleanPhone)}` : "";
-        const waParam = customerWhatsAppUrl ? `&wa=${encodeURIComponent(customerWhatsAppUrl)}` : "";
-        router.push(`/checkout/success?order=${encodeURIComponent(orderNumber)}${phoneParam}${waParam}&method=cod`);
+        redirectToTracking(orderNumber);
         return;
       }
 
@@ -236,7 +247,7 @@ export default function CheckoutPage() {
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           try {
             // Step 3: Verify payment & save order
-            const { orderNumber, customerWhatsAppUrl } = await api.verifyPayment({
+            const { orderNumber } = await api.verifyPayment({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
@@ -248,17 +259,9 @@ export default function CheckoutPage() {
               promoCode: appliedPromo?.code,
             });
 
-            // Open WA on the customer's own number with their order receipt
-            if (customerWhatsAppUrl) {
-              window.open(customerWhatsAppUrl, "_blank", "noopener,noreferrer");
-            }
-
-            // Clear cart and redirect to success (pass phone and wa URL)
-            clearCart();
-            const cleanPhone = form.phone.replace(/\D/g, "").slice(-10);
-            const phoneParam = cleanPhone ? `&phone=${encodeURIComponent(cleanPhone)}` : "";
-            const waParam = customerWhatsAppUrl ? `&wa=${encodeURIComponent(customerWhatsAppUrl)}` : "";
-            router.push(`/checkout/success?order=${orderNumber}${phoneParam}${waParam}`);
+            // Redirect to tracking page (confirmation + WhatsApp button rendered there).
+            // No window.open: it runs inside an async callback and gets popup-blocked.
+            redirectToTracking(orderNumber);
           } catch (err) {
             setError("Payment was successful but we couldn't save your order. Please WhatsApp us immediately with your payment ID: " + response.razorpay_payment_id);
             console.error(err);

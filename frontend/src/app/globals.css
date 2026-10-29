@@ -75,3 +75,54 @@ body {
   animation-play-state: paused;
 }
 
+
+/* ─── Print: clean 1-page invoice (Track Order → "Print Bill") ─── */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    min-height: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Global chrome: sticky navbar, announcement bar, footer, floating widgets, drawers */
+  header,
+  footer,
+  nav,
+  .site-header,
+  .site-footer,
+  [role="dialog"],
+  [aria-live] {
+    display: none !important;
+  }
+
+  /* Anything explicitly marked as screen-only */
+  .print-hidden,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Remove decorative effects that waste ink / cause page breaks */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .track-order-page .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: none !important;
+  }
+}

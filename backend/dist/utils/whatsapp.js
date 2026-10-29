@@ -7,7 +7,7 @@ exports.buildCustomerWhatsAppMessage = buildCustomerWhatsAppMessage;
  * when a new order is placed.
  */
 function buildAdminWhatsAppMessage(order) {
-    const adminNumber = process.env.ADMIN_WHATSAPP_NUMBER || "919833088958";
+    const adminNumber = (process.env.ADMIN_WHATSAPP_NUMBER || "919220269593").replace(/\D/g, "");
     const itemLines = order.items
         .map((item, i) => `${i + 1}. ${item.name}\n   Size: ${item.selectedSize} | Color: ${item.selectedColor}\n   Qty: ${item.quantity} × ₹${item.unitPrice.toLocaleString("en-IN")}`)
         .join("\n\n");
@@ -44,14 +44,14 @@ Please confirm the order & dispatch ASAP! 🙏`;
     return `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
 }
 /**
- * Build a pre-filled WhatsApp confirmation URL to send TO the customer.
- * Opens wa.me on the customer's own number with their order receipt.
+ * Build a pre-filled WhatsApp order-confirmation URL that the customer sends
+ * TO the boutique's business WhatsApp number (store receives the receipt).
+ * NOTE: recipient must be the business number, never the customer's own phone.
+ * Opens WhatsApp addressed to the business number with the order receipt pre-filled.
  */
 function buildCustomerWhatsAppMessage(order) {
-    // Normalise to E.164 — strip leading 0, add 91 if bare 10-digit Indian number
-    let phone = order.customerPhone.replace(/\D/g, "");
-    if (phone.length === 10)
-        phone = `91${phone}`;
+    // Recipient = boutique business WhatsApp (configurable via BUSINESS_WHATSAPP_NUMBER)
+    const recipient = (process.env.BUSINESS_WHATSAPP_NUMBER || "919220269593").replace(/\D/g, "");
     const itemLines = order.items
         .map((item, i) => `${i + 1}. ${item.name}\n   Size: ${item.selectedSize} | Color: ${item.selectedColor} | Qty: ${item.quantity}\n   ₹${(item.unitPrice * item.quantity).toLocaleString("en-IN")}`)
         .join("\n\n");
@@ -60,8 +60,8 @@ function buildCustomerWhatsAppMessage(order) {
         : "";
     const isCod = order.paymentMethod?.toLowerCase() === "cod";
     const introLine = isCod
-        ? `Hi ${order.customerName}! Your order has been placed with Cash on Delivery. 🎉`
-        : `Hi ${order.customerName}! Your payment was successful and your order has been placed. 🎉`;
+        ? `Hi AKIK! I'm ${order.customerName} and I've just placed a Cash on Delivery order. 🎉`
+        : `Hi AKIK! I'm ${order.customerName} — my payment was successful and my order has been placed. 🎉`;
     const totalLine = isCod
         ? `💵 *Amount Payable on Delivery: ₹${order.finalTotal.toLocaleString("en-IN")}* (Cash or UPI to delivery agent)`
         : `💰 *Total Paid: ₹${order.finalTotal.toLocaleString("en-IN")}*`;
@@ -86,6 +86,6 @@ ${order.address}
 🕐 Your order will be *dispatched within 24-48 hours*.
 🔍 *Track Order Live:* ${process.env.FRONTEND_URL || "https://www.akikcreationsbyhy.com"}/track-order?order=${order.orderNumber}&phone=${order.customerPhone.replace(/\D/g, "").slice(-10)}
 
-Thank you for choosing AKIK! If you have any questions, just reply here. 🙏`;
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+Thank you, AKIK! Please confirm my order. 🙏`;
+    return `https://api.whatsapp.com/send?phone=${recipient}&text=${encodeURIComponent(message)}`;
 }

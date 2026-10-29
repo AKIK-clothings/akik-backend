@@ -15,7 +15,7 @@ export const Footer: React.FC = () => {
   }
 
   return (
-    <footer className="bg-[#1A1918] text-[#FAF9F6] font-sans border-t border-[#33312E] py-8">
+    <footer className="site-footer print:hidden bg-[#1A1918] text-[#FAF9F6] font-sans border-t border-[#33312E] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         {/* Main Compact Row */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">

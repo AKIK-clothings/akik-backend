@@ -16,14 +16,16 @@ import {
 import { MegaMenu } from "./MegaMenu";
 import { MobileNav } from "./MobileNav";
 import { AnnouncementBar } from "./AnnouncementBar";
-import { NAVIGATION_CATEGORIES } from "@/data/navigationData";
+import { NAVIGATION_CATEGORIES, buildNavigationCategories } from "@/data/navigationData";
 import { MegaMenuCategory } from "@/types/navigation";
 import { useCart } from "@/context/CartContext";
 import { WhatsAppIcon, InstagramIcon } from "@/components/ui/Icons";
 import { CONTACT_INFO } from "@/data/contactInfo";
+import { api } from "@/lib/api";
 
 export const Header: React.FC = () => {
   const router = useRouter();
+  const [navCategories, setNavCategories] = useState<MegaMenuCategory[]>(NAVIGATION_CATEGORIES);
   const [activeCategory, setActiveCategory] = useState<MegaMenuCategory | null>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -47,6 +49,22 @@ export const Header: React.FC = () => {
   useEffect(() => {
     setActiveCategory(null);
   }, [pathname]);
+
+  // Dynamically populate Stitched mega-menu subcategories with only those containing stitched products
+  useEffect(() => {
+    let mounted = true;
+    api
+      .getProducts()
+      .then((products) => {
+        if (mounted && products && products.length > 0) {
+          setNavCategories(buildNavigationCategories(products));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleMouseEnter = (cat: MegaMenuCategory) => {
     if (closeTimeoutRef.current) {
@@ -83,7 +101,7 @@ export const Header: React.FC = () => {
     <>
       {/* Main Sticky Header */}
       <header
-        className={`sticky top-0 z-40 w-full transition-all duration-300 ${
+        className={`site-header print:hidden sticky top-0 z-40 w-full transition-all duration-300 ${
           isTransparent
             ? "bg-black/25 backdrop-blur-md text-white border-b border-white/15"
             : isScrolled
@@ -154,7 +172,7 @@ export const Header: React.FC = () => {
               className="hidden lg:flex items-center gap-1 xl:gap-1.5 h-full"
               aria-label="Main Navigation"
             >
-              {NAVIGATION_CATEGORIES.map((category) => {
+              {navCategories.map((category) => {
                 const isActive = activeCategory?.id === category.id;
 
                 return (

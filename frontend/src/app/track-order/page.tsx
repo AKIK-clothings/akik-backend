@@ -136,6 +136,17 @@ function TrackOrderContent() {
   const activeStep = order ? getStatusStep(order.status) : 0;
   const isCancelled = order ? order.status.toLowerCase() === "cancelled" : false;
 
+  const STATUS_LABELS: Record<string, string> = {
+    new: "Order Placed",
+    confirmed: "Confirmed",
+    processing: "In Tailoring",
+    tailoring: "In Tailoring",
+    dispatched: "Dispatched",
+    delivered: "Delivered",
+    cancelled: "Cancelled",
+  };
+  const statusLabel = order ? STATUS_LABELS[order.status.toLowerCase()] || order.status : "";
+
   const STATUS_STEPS = [
     { title: "Order Placed", desc: "Payment received & logged" },
     { title: "Confirmed", desc: "Verified with AKIK atelier" },
@@ -145,7 +156,7 @@ function TrackOrderContent() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 print:p-0 print:max-w-none">
       {/* Header */}
       <div className="text-center max-w-xl mx-auto mb-8 print:hidden">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C47D5A]/10 text-[#C47D5A] text-xs uppercase tracking-widest font-semibold mb-3">
@@ -245,7 +256,7 @@ function TrackOrderContent() {
 
       {/* Order Status & Receipt Display */}
       {order && (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in print:space-y-0 print:animate-none">
           {/* Milestone Stepper Card */}
           <div className="bg-white rounded-2xl border border-[#EAE5DE] p-6 shadow-sm print:hidden">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EAE5DE] gap-2">
@@ -254,7 +265,7 @@ function TrackOrderContent() {
                   Progress Milestone
                 </span>
                 <h2 className="font-serif text-xl text-[#1F1E1D] font-normal mt-0.5">
-                  Order Status: <span className="font-sans font-bold capitalize text-[#1F1E1D]">{order.status}</span>
+                  Order Status: <span className="font-sans font-bold capitalize text-[#1F1E1D]">{statusLabel}</span>
                 </h2>
               </div>
               <div className="text-left sm:text-right">
@@ -347,7 +358,7 @@ function TrackOrderContent() {
 
 export default function TrackOrderPage() {
   return (
-    <main className="min-h-screen bg-[#FAF9F6] font-sans pb-24">
+    <main className="track-order-page min-h-screen bg-[#FAF9F6] font-sans pb-24 print:min-h-0 print:bg-white print:pb-0">
       <Suspense
         fallback={
           <div className="min-h-[50vh] flex flex-col items-center justify-center text-center">

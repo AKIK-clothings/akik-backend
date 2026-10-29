@@ -400,57 +400,65 @@ export default function ProductDetailPage() {
               </p>
             </div>
 
-            {/* Color Selector */}
-            <div>
-              <div className="flex items-center justify-between mb-2.5 text-xs">
-                <span className="font-semibold text-[#1F1E1D] flex items-center gap-2">
-                  <span>Color:</span>
-                  <strong className="text-[#C47D5A]">{selectedColor.name}</strong>
-                  {selectedColor.isSoldOut && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-200">
-                      Sold Out
-                    </span>
-                  )}
-                </span>
-                <span className="text-[#75706B]">
-                  {product.colorVariants.length} Artisanal Shades
-                </span>
-              </div>
-
-              {/* Clickable Color Circles with Active Ring Indicator */}
-              <div className="flex items-center gap-3">
-                {product.colorVariants.map((color) => {
-                  const isCurrent = selectedColor.name === color.name;
-                  const isSold = Boolean(color.isSoldOut);
-                  return (
-                    <button
-                      key={color.name}
-                      type="button"
-                      disabled={isSold}
-                      onClick={() => {
-                        if (!isSold) setSelectedColor(color);
-                      }}
-                      title={isSold ? `${color.name} (Sold Out)` : color.name}
-                      aria-label={isSold ? `${color.name} - Sold Out` : `Select color ${color.name}`}
-                      className={`relative w-8 h-8 rounded-full transition-all ${
-                        isSold
-                          ? "opacity-35 cursor-not-allowed border-2 border-dashed border-gray-400"
-                          : isCurrent
-                          ? "ring-2 ring-[#C47D5A] ring-offset-2 scale-110 shadow-sm cursor-pointer"
-                          : "border border-black/10 hover:scale-105 cursor-pointer"
-                      }`}
-                      style={{ backgroundColor: color.hexCode }}
-                    >
-                      {isSold && (
-                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="w-full h-0.5 bg-red-600 rotate-45 transform" />
+            {/* Color Selector (hidden when 0 shades or only "Default" color exists) */}
+            {(() => {
+              const shades = (product.colorVariants || []).filter(
+                (c) => c?.name && c.name.trim() !== "" && c.name.trim().toLowerCase() !== "default"
+              );
+              if (shades.length === 0) return null;
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-2.5 text-xs">
+                    <span className="font-semibold text-[#1F1E1D] flex items-center gap-2">
+                      <span>Color:</span>
+                      <strong className="text-[#C47D5A]">{selectedColor.name}</strong>
+                      {selectedColor.isSoldOut && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-200">
+                          Sold Out
                         </span>
                       )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                    </span>
+                    <span className="text-[#75706B]">
+                      {shades.length} {shades.length === 1 ? "Artisanal Shade" : "Artisanal Shades"}
+                    </span>
+                  </div>
+
+                  {/* Clickable Color Circles with Active Ring Indicator */}
+                  <div className="flex items-center gap-3">
+                    {shades.map((color) => {
+                      const isCurrent = selectedColor.name === color.name;
+                      const isSold = Boolean(color.isSoldOut);
+                      return (
+                        <button
+                          key={color.name}
+                          type="button"
+                          disabled={isSold}
+                          onClick={() => {
+                            if (!isSold) setSelectedColor(color);
+                          }}
+                          title={isSold ? `${color.name} (Sold Out)` : color.name}
+                          aria-label={isSold ? `${color.name} - Sold Out` : `Select color ${color.name}`}
+                          className={`relative w-8 h-8 rounded-full transition-all ${
+                            isSold
+                              ? "opacity-35 cursor-not-allowed border-2 border-dashed border-gray-400"
+                              : isCurrent
+                              ? "ring-2 ring-[#C47D5A] ring-offset-2 scale-110 shadow-sm cursor-pointer"
+                              : "border border-black/10 hover:scale-105 cursor-pointer"
+                          }`}
+                          style={{ backgroundColor: color.hexCode }}
+                        >
+                          {isSold && (
+                            <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <span className="w-full h-0.5 bg-red-600 rotate-45 transform" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Size Selector or Unstitched Notice */}
             {!isUnstitched ? (
