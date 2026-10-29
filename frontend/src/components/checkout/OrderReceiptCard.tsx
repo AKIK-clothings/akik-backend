@@ -461,7 +461,7 @@ export const OrderReceiptCard: React.FC<OrderReceiptCardProps> = ({
           )}
 
           <a
-            href={`https://api.whatsapp.com/send?phone=919833889598&text=${encodeURIComponent(
+            href={`https://api.whatsapp.com/send?phone=919833088958&text=${encodeURIComponent(
               `✅ *Order Confirmed — AKIK by Hafsa Khatri* ✨\nOrder No: ${order.orderNumber}\nCustomer: ${order.customerName}\nTotal: ₹${order.finalTotal.toLocaleString("en-IN")} (${isCod ? "Cash on Delivery" : "Online Payment"})\n\nHi AKIK, I have placed order ${order.orderNumber} for ₹${order.finalTotal}. Could you please confirm and share tailoring updates? Thank you!`
             )}`}
             target="_blank"

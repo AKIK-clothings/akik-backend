@@ -7,7 +7,7 @@ exports.buildCustomerWhatsAppMessage = buildCustomerWhatsAppMessage;
  * when a new order is placed.
  */
 function buildAdminWhatsAppMessage(order) {
-    const adminNumber = (process.env.ADMIN_WHATSAPP_NUMBER || "919833889598").replace(/\D/g, "");
+    const adminNumber = (process.env.ADMIN_WHATSAPP_NUMBER || "919833088958").replace(/\D/g, "");
     const itemLines = order.items
         .map((item, i) => `${i + 1}. ${item.name}\n   Size: ${item.selectedSize} | Color: ${item.selectedColor}\n   Qty: ${item.quantity} × ₹${item.unitPrice.toLocaleString("en-IN")}`)
         .join("\n\n");
@@ -51,7 +51,7 @@ Please confirm the order & dispatch ASAP! 🙏`;
  */
 function buildCustomerWhatsAppMessage(order) {
     // Recipient = boutique business WhatsApp (configurable via BUSINESS_WHATSAPP_NUMBER)
-    const recipient = (process.env.BUSINESS_WHATSAPP_NUMBER || "919833889598").replace(/\D/g, "");
+    const recipient = (process.env.BUSINESS_WHATSAPP_NUMBER || "919833088958").replace(/\D/g, "");
     const itemLines = order.items
         .map((item, i) => `${i + 1}. ${item.name}\n   Size: ${item.selectedSize} | Color: ${item.selectedColor} | Qty: ${item.quantity}\n   ₹${(item.unitPrice * item.quantity).toLocaleString("en-IN")}`)
         .join("\n\n");
