@@ -67,8 +67,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Rehydrate cart and wishlist from localStorage on client mount
+  // Rehydrate cart and wishlist from localStorage on client mount & warm up backend
   useEffect(() => {
+    api.warmUpBackend();
     try {
       const savedCart = localStorage.getItem("akik_cart");
       if (savedCart) setCart(JSON.parse(savedCart));

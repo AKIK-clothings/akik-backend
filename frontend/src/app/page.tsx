@@ -29,10 +29,11 @@ const CraftProcessShowcase = dynamic(
 export default function HomePage() {
   const [bestsellers, setBestsellers] = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
+  const [isFeaturedLoading, setIsFeaturedLoading] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Dynamically shift video source on viewport resize (mobile <-> laptop)
+  // Dynamically shift video source on viewport resize (mobile <-> laptop) without duplicate <source> downloads
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
 
@@ -67,7 +68,10 @@ export default function HomePage() {
         }
       })
       .catch((err) => {
-        console.warn("API featured load error, using fallback:", err);
+        console.warn("API featured load error:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsFeaturedLoading(false);
       });
     return () => {
       isMounted = false;
@@ -78,14 +82,6 @@ export default function HomePage() {
     <main className="min-h-screen bg-[#FAF9F6] font-sans pb-20">
       {/* 1. Cinematic Hero Section with Brand Background Video (Model Face Completely Visible) */}
       <section className="relative -mt-[52px] pt-[52px] h-[95vh] min-h-[660px] w-full overflow-hidden flex flex-col justify-end items-center text-center pb-12 sm:pb-16 md:pb-20">
-        {/*
-          Hero media:
-          - The fallback image is shown immediately while the video loads.
-          - Mobile uses /public/mobile_background.mp4.
-          - Desktop/laptop uses /public/windows_background.mp4.
-          - Video stays hidden until the browser can display it.
-        */}
-
         {/* Fallback image shown while the video is loading */}
         <Image
           src="/home_background.png"
@@ -97,34 +93,20 @@ export default function HomePage() {
           aria-hidden="true"
         />
 
-        {/* Background video */}
+        {/* Background video (single dynamic src controlled by matchMedia to prevent duplicate downloads) */}
         <video
           ref={videoRef}
           autoPlay
           loop
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           onCanPlay={() => setVideoReady(true)}
           className={`absolute inset-0 z-[1] h-full w-full object-cover object-[50%_8%] md:object-[35%_8%] transition-opacity duration-300 ${
             videoReady ? "opacity-100" : "opacity-0"
           }`}
           aria-label="AKIK artisanal clothing collection background video"
         >
-          {/* Mobile video */}
-          <source
-            media="(max-width: 767px)"
-            src="/mobile_backgrouns.mp4"
-            type="video/mp4"
-          />
-
-          {/* Desktop and laptop video */}
-          <source
-            media="(min-width: 768px)"
-            src="/desktop_background.mp4"
-            type="video/mp4"
-          />
-
           Your browser does not support video playback.
         </video>
 
@@ -263,7 +245,17 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {bestsellers.length > 0 ? (
+          {isFeaturedLoading ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="animate-pulse space-y-3">
+                  <div className="aspect-[3/4] bg-[#EAE5DE]/60 rounded-md" />
+                  <div className="h-4 bg-[#EAE5DE]/70 rounded w-3/4" />
+                  <div className="h-3 bg-[#EAE5DE]/50 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : bestsellers.length > 0 ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               {bestsellers.map((product) => (
                 <ProductCard key={product.id} product={product} />
@@ -352,9 +344,17 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {newArrivals.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          {isFeaturedLoading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="animate-pulse space-y-3">
+                  <div className="aspect-[3/4] bg-[#EAE5DE]/60 rounded-md" />
+                  <div className="h-4 bg-[#EAE5DE]/70 rounded w-3/4" />
+                  <div className="h-3 bg-[#EAE5DE]/50 rounded w-1/2" />
+                </div>
+              ))
+            : newArrivals.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
         </div>
       </section>
     </main>

@@ -38,6 +38,7 @@ router.get("/", async (req, res) => {
             res.json({ subcategories: fallback });
             return;
         }
+        res.set("Cache-Control", "public, max-age=300, s-maxage=600, stale-while-revalidate=86400");
         res.json({ subcategories: data || [] });
     }
     catch (err) {

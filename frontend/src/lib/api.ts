@@ -113,12 +113,58 @@ export function mapApiProduct(p: ApiProduct) {
   };
 }
 
+// ─── Edge-Cached Catalog Fetch Helper ─────────────────────────────────────────
+
+async function fetchCatalogWithFallback(edgePath: string, directPath: string): Promise<Response> {
+  // 1. Primary: Vercel Edge / ISR Route Handler (same-origin, <50ms when warm)
+  if (typeof window !== "undefined") {
+    try {
+      const edgeRes = await fetch(edgePath);
+      if (edgeRes.ok || edgeRes.status === 404) {
+        return edgeRes;
+      }
+    } catch {
+      // Fall through to direct backend fetch
+    }
+  }
+
+  // 2. Fallback: Direct Backend API with 1-shot retry for cold-start resilience
+  try {
+    return await fetch(`${BASE_URL}${directPath}`);
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return await fetch(`${BASE_URL}${directPath}`);
+  }
+}
+
+function revalidateCatalogEdgeCache(): void {
+  if (typeof window !== "undefined") {
+    fetch("/api/catalog/revalidate", { method: "POST" }).catch(() => {});
+  }
+}
+
+let warmupTriggered = false;
+
 // ─── Public API Functions ─────────────────────────────────────────────────────
 
 import { memoryCache } from "./cache";
 
 export const api = {
-  /** Fetch products with optional filters (cached with 3m stale time) */
+  /** Non-blocking background ping to wake Render before user reaches checkout */
+  warmUpBackend(): void {
+    if (typeof window === "undefined" || warmupTriggered) return;
+    warmupTriggered = true;
+    const trigger = () => {
+      fetch(`${BASE_URL}/ping`, { mode: "no-cors", cache: "no-store" }).catch(() => {});
+    };
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(trigger, { timeout: 2000 });
+    } else {
+      setTimeout(trigger, 500);
+    }
+  },
+
+  /** Fetch products with optional filters (cached on Vercel Edge + 3m client SWR) */
   async getProducts(params?: Record<string, string | string[]>): Promise<ApiProduct[]> {
     const searchParams = new URLSearchParams();
     if (params) {
@@ -130,11 +176,16 @@ export const api = {
         }
       }
     }
-    const cacheKey = `public:products:${searchParams.toString()}`;
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : "";
+    const cacheKey = `public:products:${query}`;
     return memoryCache.fetchWithCache(
       cacheKey,
       async () => {
-        const res = await fetch(`${BASE_URL}/api/products?${searchParams}`);
+        const res = await fetchCatalogWithFallback(
+          `/api/catalog/products${suffix}`,
+          `/api/products${suffix}`
+        );
         if (!res.ok) throw new Error("Failed to fetch products");
         const data = await res.json();
         return data.products as ApiProduct[];
@@ -143,13 +194,17 @@ export const api = {
     );
   },
 
-  /** Fetch a single product by slug (cached with 5m stale time) */
+  /** Fetch a single product by slug (cached on Vercel Edge + 5m client SWR) */
   async getProduct(slug: string): Promise<ApiProduct | null> {
     const cacheKey = `public:product:${slug}`;
     return memoryCache.fetchWithCache(
       cacheKey,
       async () => {
-        const res = await fetch(`${BASE_URL}/api/products/${slug}`);
+        const safeSlug = encodeURIComponent(slug);
+        const res = await fetchCatalogWithFallback(
+          `/api/catalog/product/${safeSlug}`,
+          `/api/products/${safeSlug}`
+        );
         if (res.status === 404) return null;
         if (!res.ok) throw new Error("Failed to fetch product");
         const data = await res.json();
@@ -159,12 +214,15 @@ export const api = {
     );
   },
 
-  /** Fetch featured/bestseller products for homepage (cached with 3m stale time) */
+  /** Fetch featured/bestseller products for homepage (cached on Vercel Edge + 3m client SWR) */
   async getFeaturedProducts(): Promise<{ bestsellers: ApiProduct[]; newArrivals: ApiProduct[] }> {
     return memoryCache.fetchWithCache(
       "public:products:featured",
       async () => {
-        const res = await fetch(`${BASE_URL}/api/products/featured`);
+        const res = await fetchCatalogWithFallback(
+          "/api/catalog/featured",
+          "/api/products/featured"
+        );
         if (!res.ok) throw new Error("Failed to fetch featured products");
         return res.json();
       },
@@ -333,14 +391,17 @@ export const api = {
     return data;
   },
 
-  /** Fetch subcategories optionally filtered by section (cached with 5m stale time) */
+  /** Fetch subcategories optionally filtered by section (cached on Vercel Edge + 5m client SWR) */
   async getSubcategories(section?: string): Promise<SubCategoryItem[]> {
     const query = section ? `?section=${encodeURIComponent(section)}` : "";
     const cacheKey = `public:subcategories:${section || "all"}`;
     return memoryCache.fetchWithCache(
       cacheKey,
       async () => {
-        const res = await fetch(`${BASE_URL}/api/subcategories${query}`);
+        const res = await fetchCatalogWithFallback(
+          `/api/catalog/subcategories${query}`,
+          `/api/subcategories${query}`
+        );
         if (!res.ok) throw new Error("Failed to fetch subcategories");
         const data = await res.json();
         return (data.subcategories || []) as SubCategoryItem[];
@@ -366,7 +427,7 @@ export const adminApi = {
         body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
         credentials: "include",
       });
-    } catch (networkErr: any) {
+    } catch {
       throw new Error(
         `Unable to connect to backend server (${BASE_URL}). Please verify your network connection.`
       );
@@ -484,6 +545,7 @@ export const adminApi = {
     });
     memoryCache.invalidate("admin:subcategories");
     memoryCache.invalidate("public:subcategories");
+    revalidateCatalogEdgeCache();
     return res;
   },
 
@@ -499,6 +561,7 @@ export const adminApi = {
     memoryCache.invalidate("admin:products");
     memoryCache.invalidate("public:products");
     memoryCache.invalidate("admin:stats");
+    revalidateCatalogEdgeCache();
     return res;
   },
 
@@ -508,6 +571,7 @@ export const adminApi = {
     memoryCache.invalidate(`admin:product:${id}`);
     memoryCache.invalidate("public:product");
     memoryCache.invalidate("public:products");
+    revalidateCatalogEdgeCache();
     return res;
   },
 
@@ -517,6 +581,7 @@ export const adminApi = {
     memoryCache.invalidate(`admin:product:${id}`);
     memoryCache.invalidate("public:products");
     memoryCache.invalidate("admin:stats");
+    revalidateCatalogEdgeCache();
     return res;
   },
 
@@ -544,6 +609,8 @@ export const adminApi = {
     }
     memoryCache.invalidate(`admin:product:${productId}`);
     memoryCache.invalidate("public:product");
+    memoryCache.invalidate("public:products");
+    revalidateCatalogEdgeCache();
     return res.json();
   },
 

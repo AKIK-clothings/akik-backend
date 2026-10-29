@@ -44,6 +44,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    res.set("Cache-Control", "public, max-age=300, s-maxage=600, stale-while-revalidate=86400");
     res.json({ subcategories: data || [] });
   } catch (err) {
     console.error("GET /subcategories error:", err);

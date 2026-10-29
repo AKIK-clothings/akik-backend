@@ -3,6 +3,25 @@ import { supabase } from "../config/supabase";
 
 const router = Router();
 
+interface CachedFeatured {
+  data: {
+    bestsellers: unknown[];
+    newArrivals: unknown[];
+  };
+  cachedAt: number;
+}
+
+let cachedFeatured: CachedFeatured | null = null;
+let cachedAllActiveProducts: { data: any[]; cachedAt: number } | null = null;
+const productSlugCache = new Map<string, { data: any; cachedAt: number }>();
+const CATALOG_TTL_MS = 2 * 60 * 1000; // 2m in-memory server cache
+
+export const invalidateFeaturedCache = (): void => {
+  cachedFeatured = null;
+  cachedAllActiveProducts = null;
+  productSlugCache.clear();
+};
+
 // GET /api/products — List active products with filtering & sorting
 router.get("/", async (req: Request, res: Response): Promise<void> => {
   try {
@@ -20,63 +39,112 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       section,
     } = req.query;
 
-    let query = supabase
-      .from("products")
-      .select("*")
-      .eq("is_active", true);
+    let products: any[] | null = null;
 
-    // Section filter ('women' | 'men') - backwards compatible: when omitted, all products returned
-    if (section && typeof section === "string" && section.toLowerCase() !== "all") {
-      query = query.eq("section", section.toLowerCase().trim());
+    // Fast path: serve base active products from memory cache when no DB-specific text search is used
+    const canUseBaseCache =
+      !q &&
+      sort === "featured" &&
+      cachedAllActiveProducts &&
+      Date.now() - cachedAllActiveProducts.cachedAt < CATALOG_TTL_MS;
+
+    if (canUseBaseCache && cachedAllActiveProducts) {
+      products = cachedAllActiveProducts.data;
+    } else if (
+      !q &&
+      sort === "featured" &&
+      !category &&
+      !section &&
+      !minPrice &&
+      !maxPrice &&
+      !inStock &&
+      Number(limit) >= 100
+    ) {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("is_best_seller", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(Number(limit));
+      if (error) throw error;
+      products = data || [];
+      cachedAllActiveProducts = { data: products, cachedAt: Date.now() };
     }
 
-    // Category filter
-    if (category && category !== "all") {
-      query = query.eq("category", category as string);
-    }
+    if (!products) {
+      let query = supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true);
 
-    // Price range filter
-    if (minPrice) query = query.gte("discounted_price", Number(minPrice));
-    if (maxPrice) query = query.lte("discounted_price", Number(maxPrice));
-
-    // In-stock only
-    if (inStock === "true") query = query.eq("is_sold_out", false);
-
-    // Text search on name & description (sanitized against PostgREST injection - SEC-06)
-    if (q && typeof q === "string") {
-      const sanitized = q.replace(/[^a-zA-Z0-9\s]/g, "").trim();
-      if (sanitized) {
-        query = query.or(
-          `name.ilike.%${sanitized}%,description.ilike.%${sanitized}%,subcategory.ilike.%${sanitized}%`
-        );
+      // Section filter ('women' | 'men') - backwards compatible: when omitted, all products returned
+      if (section && typeof section === "string" && section.toLowerCase() !== "all") {
+        query = query.eq("section", section.toLowerCase().trim());
       }
+
+      // Category filter
+      if (category && category !== "all") {
+        query = query.eq("category", category as string);
+      }
+
+      // Price range filter
+      if (minPrice) query = query.gte("discounted_price", Number(minPrice));
+      if (maxPrice) query = query.lte("discounted_price", Number(maxPrice));
+
+      // In-stock only
+      if (inStock === "true") query = query.eq("is_sold_out", false);
+
+      // Text search on name & description (sanitized against PostgREST injection - SEC-06)
+      if (q && typeof q === "string") {
+        const sanitized = q.replace(/[^a-zA-Z0-9\s]/g, "").trim();
+        if (sanitized) {
+          query = query.or(
+            `name.ilike.%${sanitized}%,description.ilike.%${sanitized}%,subcategory.ilike.%${sanitized}%`
+          );
+        }
+      }
+
+      // Sorting
+      switch (sort) {
+        case "newest":
+          query = query.order("created_at", { ascending: false });
+          break;
+        case "price-asc":
+          query = query.order("discounted_price", { ascending: true });
+          break;
+        case "price-desc":
+          query = query.order("discounted_price", { ascending: false });
+          break;
+        case "discount":
+          // Handled post-fetch
+          break;
+        default: // featured
+          query = query
+            .order("is_featured", { ascending: false })
+            .order("is_best_seller", { ascending: false })
+            .order("created_at", { ascending: false });
+      }
+
+      query = query.limit(Number(limit));
+
+      const { data, error } = await query;
+      if (error) throw error;
+      products = data || [];
+    } else {
+      // Apply lightweight filters in-memory on cached base product list
+      products = products.filter((p) => {
+        if (section && typeof section === "string" && section.toLowerCase() !== "all") {
+          if ((p.section || "women") !== section.toLowerCase().trim()) return false;
+        }
+        if (category && category !== "all" && p.category !== category) return false;
+        if (minPrice && p.discounted_price < Number(minPrice)) return false;
+        if (maxPrice && p.discounted_price > Number(maxPrice)) return false;
+        if (inStock === "true" && p.is_sold_out) return false;
+        return true;
+      });
     }
-
-    // Sorting
-    switch (sort) {
-      case "newest":
-        query = query.order("created_at", { ascending: false });
-        break;
-      case "price-asc":
-        query = query.order("discounted_price", { ascending: true });
-        break;
-      case "price-desc":
-        query = query.order("discounted_price", { ascending: false });
-        break;
-      case "discount":
-        // Handled post-fetch
-        break;
-      default: // featured
-        query = query
-          .order("is_featured", { ascending: false })
-          .order("is_best_seller", { ascending: false })
-          .order("created_at", { ascending: false });
-    }
-
-    query = query.limit(Number(limit));
-
-    const { data: products, error } = await query;
-    if (error) throw error;
 
     let result = products || [];
 
@@ -108,13 +176,13 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (sort === "discount") {
-      result = result.sort(
+      result = [...result].sort(
         (a, b) =>
           b.regular_price - b.discounted_price - (a.regular_price - a.discounted_price)
       );
     }
 
-    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+    res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
     res.json({ products: result, total: result.length });
   } catch (err) {
     console.error("GET /products error:", err);
@@ -122,25 +190,11 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-interface CachedFeatured {
-  data: {
-    bestsellers: unknown[];
-    newArrivals: unknown[];
-  };
-  cachedAt: number;
-}
-let cachedFeatured: CachedFeatured | null = null;
-const FEATURED_TTL_MS = 60 * 1000; // 60s
-
-export const invalidateFeaturedCache = (): void => {
-  cachedFeatured = null;
-};
-
 // GET /api/products/featured — Featured products for homepage
 router.get("/featured", async (_req: Request, res: Response): Promise<void> => {
   try {
-    if (cachedFeatured && Date.now() - cachedFeatured.cachedAt < FEATURED_TTL_MS) {
-      res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+    if (cachedFeatured && Date.now() - cachedFeatured.cachedAt < CATALOG_TTL_MS) {
+      res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
       res.json(cachedFeatured.data);
       return;
     }
@@ -170,7 +224,7 @@ router.get("/featured", async (_req: Request, res: Response): Promise<void> => {
 
     cachedFeatured = { data: result, cachedAt: Date.now() };
 
-    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+    res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
     res.json(result);
   } catch (err) {
     console.error("GET /products/featured error:", err);
@@ -182,6 +236,13 @@ router.get("/featured", async (_req: Request, res: Response): Promise<void> => {
 router.get("/:slug", async (req: Request, res: Response): Promise<void> => {
   try {
     const { slug } = req.params;
+
+    const cached = productSlugCache.get(slug);
+    if (cached && Date.now() - cached.cachedAt < CATALOG_TTL_MS) {
+      res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
+      res.json({ product: cached.data });
+      return;
+    }
 
     const { data: product, error } = await supabase
       .from("products")
@@ -195,6 +256,8 @@ router.get("/:slug", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    productSlugCache.set(slug, { data: product, cachedAt: Date.now() });
+    res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
     res.json({ product });
   } catch (err) {
     console.error("GET /products/:slug error:", err);

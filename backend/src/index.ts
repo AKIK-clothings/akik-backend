@@ -87,6 +87,12 @@ app.use(express.urlencoded({ extended: true, limit: "256kb" }));
 // Global rate limiting for API endpoints (SEC-05)
 app.use("/api/", apiLimiter);
 
+// ─── Lightweight Keep-Alive Ping (Zero DB Overhead) ──────────────────────────
+app.get("/ping", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.status(200).json({ status: "ok", timestamp: Date.now() });
+});
+
 // ─── Health & Readiness Check ──────────────────────────────────────────────────
 app.get("/health", async (_req, res) => {
   try {
