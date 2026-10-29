@@ -109,6 +109,7 @@ export function mapApiProduct(p: ApiProduct) {
     isNewArrival: p.is_new_arrival,
     isBestSeller: p.is_best_seller,
     isFeatured: p.is_featured,
+    createdAt: p.created_at,
     accordions: p.accordions,
   };
 }

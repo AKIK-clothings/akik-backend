@@ -230,7 +230,7 @@ export const FilterContent: React.FC<FilterContentProps> = ({
             <input
               type="number"
               value={priceRange[0]}
-              min={1000}
+              min={0}
               max={priceRange[1]}
               onChange={(e) =>
                 onChangePriceRange([Number(e.target.value), priceRange[1]])
@@ -245,7 +245,7 @@ export const FilterContent: React.FC<FilterContentProps> = ({
               type="number"
               value={priceRange[1]}
               min={priceRange[0]}
-              max={12000}
+              max={50000}
               onChange={(e) =>
                 onChangePriceRange([priceRange[0], Number(e.target.value)])
               }
@@ -256,10 +256,10 @@ export const FilterContent: React.FC<FilterContentProps> = ({
 
         <input
           type="range"
-          min={1500}
-          max={10000}
+          min={500}
+          max={25000}
           step={500}
-          value={priceRange[1]}
+          value={Math.min(priceRange[1], 25000)}
           onChange={(e) =>
             onChangePriceRange([priceRange[0], Number(e.target.value)])
           }

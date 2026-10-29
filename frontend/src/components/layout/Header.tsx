@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   Search,
@@ -23,6 +23,7 @@ import { WhatsAppIcon, InstagramIcon } from "@/components/ui/Icons";
 import { CONTACT_INFO } from "@/data/contactInfo";
 
 export const Header: React.FC = () => {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<MegaMenuCategory | null>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -346,7 +347,14 @@ export const Header: React.FC = () => {
         {/* Quick Search Overlay Dropdown */}
         {isSearchOpen && (
           <div className="border-t border-[#EAE5DE] bg-white py-3 px-4 shadow-lg animate-fade-in">
-            <div className="max-w-3xl mx-auto flex items-center gap-2">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setIsSearchOpen(false);
+                router.push(`/collections?q=${encodeURIComponent(searchQuery)}`);
+              }}
+              className="max-w-3xl mx-auto flex items-center gap-2"
+            >
               <Search className="w-4 h-4 text-[#C47D5A]" />
               <input
                 type="text"
@@ -356,14 +364,13 @@ export const Header: React.FC = () => {
                 className="w-full text-sm bg-transparent border-none focus:outline-none text-[#1F1E1D] placeholder-[#75706B]"
                 autoFocus
               />
-              <Link
-                href={`/collections?q=${encodeURIComponent(searchQuery)}`}
-                onClick={() => setIsSearchOpen(false)}
+              <button
+                type="submit"
                 className="text-xs uppercase tracking-wider font-semibold text-[#C47D5A] hover:text-[#A8623E] px-3 py-1.5 bg-[#F4EFEA] rounded"
               >
                 Search
-              </Link>
-            </div>
+              </button>
+            </form>
           </div>
         )}
 

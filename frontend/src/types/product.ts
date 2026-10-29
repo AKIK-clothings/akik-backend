@@ -82,6 +82,7 @@ export interface Product {
   isNewArrival?: boolean;
   isBestSeller?: boolean;
   isFeatured?: boolean;
+  createdAt?: string;
   accordions?: {
     fabricCare: string;
     stitchingDetails: string;

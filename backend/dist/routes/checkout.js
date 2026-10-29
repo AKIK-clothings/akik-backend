@@ -12,7 +12,61 @@ const orderNumber_1 = require("../utils/orderNumber");
 const whatsapp_1 = require("../utils/whatsapp");
 const rateLimit_1 = require("../middleware/rateLimit");
 const validate_1 = require("../middleware/validate");
+const products_1 = require("./products");
+const orders_1 = require("./admin/orders");
 const router = (0, express_1.Router)();
+// ─── Decrement Inventory on Completed Order ──────────────────────────────────
+async function decrementInventory(items) {
+    for (const item of items) {
+        if (!item.productId)
+            continue;
+        try {
+            const { data: prod } = await supabase_1.supabase
+                .from("products")
+                .select("id, size_stock_map, is_sold_out")
+                .eq("id", item.productId)
+                .single();
+            if (!prod)
+                continue;
+            const sm = (prod.size_stock_map || {});
+            let updatedSm = { ...sm };
+            let anyChanged = false;
+            const sizeKey = (item.selectedSize || "").trim();
+            if (typeof updatedSm[sizeKey] === "number") {
+                updatedSm[sizeKey] = Math.max(0, updatedSm[sizeKey] - (item.quantity || 1));
+                anyChanged = true;
+            }
+            if (typeof updatedSm.total === "number") {
+                updatedSm.total = Math.max(0, updatedSm.total - (item.quantity || 1));
+                anyChanged = true;
+            }
+            if (anyChanged) {
+                let isSoldOut = Boolean(prod.is_sold_out);
+                if (typeof updatedSm.total === "number" && updatedSm.total <= 0) {
+                    isSoldOut = true;
+                }
+                else {
+                    const numericSizes = Object.entries(updatedSm).filter(([k, v]) => k !== "total" && typeof v === "number");
+                    if (numericSizes.length > 0 && numericSizes.every(([_, v]) => v <= 0)) {
+                        isSoldOut = true;
+                    }
+                }
+                await supabase_1.supabase
+                    .from("products")
+                    .update({
+                    size_stock_map: updatedSm,
+                    is_sold_out: isSoldOut,
+                    updated_at: new Date().toISOString(),
+                })
+                    .eq("id", prod.id);
+                (0, products_1.invalidateFeaturedCache)();
+            }
+        }
+        catch (invErr) {
+            console.warn(`Failed inventory decrement for product ${item.productId}:`, invErr);
+        }
+    }
+}
 const codIdempotencyMap = new Map();
 function getCachedCodOrder(key) {
     if (!key)
@@ -91,6 +145,34 @@ async function calculateAuthoritativeTotals(rawItems, requestedPromoCode) {
             const matchingVariant = productVariants.find((cv) => cv.name?.trim().toLowerCase() === requestedColorName);
             if (matchingVariant && matchingVariant.isSoldOut === true) {
                 throw new Error(`Color "${matchingVariant.name}" for "${product.name}" is sold out`);
+            }
+        }
+        // Check size stock validation
+        const sizeStockMap = (product.size_stock_map || {});
+        if (sizeStockMap && Object.keys(sizeStockMap).length > 0) {
+            const requestedSize = (item.selectedSize || "").trim();
+            const isUnstitched = product.category === "unstitched" ||
+                product.category === "dupattas" ||
+                product.section === "men" ||
+                requestedSize.toLowerCase() === "unstitched";
+            if (isUnstitched) {
+                if (typeof sizeStockMap.total === "number") {
+                    if (sizeStockMap.total <= 0) {
+                        throw new Error(`Product "${product.name}" is sold out`);
+                    }
+                    if (item.quantity > sizeStockMap.total) {
+                        throw new Error(`Only ${sizeStockMap.total} piece(s) available for "${product.name}"`);
+                    }
+                }
+            }
+            else if (requestedSize && sizeStockMap[requestedSize] !== undefined) {
+                const val = sizeStockMap[requestedSize];
+                if (val === false || (typeof val === "number" && val <= 0)) {
+                    throw new Error(`Size "${requestedSize}" for "${product.name}" is sold out`);
+                }
+                if (typeof val === "number" && item.quantity > val) {
+                    throw new Error(`Only ${val} piece(s) available in size ${requestedSize} for "${product.name}"`);
+                }
             }
         }
         const unitPrice = product.discounted_price;
@@ -436,6 +518,9 @@ router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.valid
             .from("orders")
             .update({ whatsapp_notified: true })
             .eq("id", order.id);
+        // Decrement inventory and bust cache
+        await decrementInventory(verified.verifiedItems);
+        (0, orders_1.invalidateStatsOverviewCache)();
         // Build customer WA confirmation URL (sent TO the customer's own phone)
         const customerWhatsAppUrl = (0, whatsapp_1.buildCustomerWhatsAppMessage)({
             orderNumber,
@@ -647,6 +732,9 @@ router.post("/create-cod-order", rateLimit_1.checkoutLimiter, (0, validate_1.val
             .from("orders")
             .update({ whatsapp_notified: true })
             .eq("id", order.id);
+        // Decrement inventory and bust cache
+        await decrementInventory(verified.verifiedItems);
+        (0, orders_1.invalidateStatsOverviewCache)();
         // Build customer WA confirmation URL
         const customerWhatsAppUrl = (0, whatsapp_1.buildCustomerWhatsAppMessage)({
             orderNumber,
@@ -793,12 +881,18 @@ router.post("/webhook", async (req, res) => {
                                     line_total: (pi.unitPrice || amountPaid) * (pi.quantity || 1),
                                 }));
                                 await supabase_1.supabase.from("order_items").insert(orderItemsToInsert);
+                                await decrementInventory(orderItemsToInsert.map((oi) => ({
+                                    productId: oi.product_id,
+                                    selectedSize: oi.selected_size,
+                                    quantity: oi.quantity,
+                                })));
                             }
                         }
                         catch (itemErr) {
                             console.error("Webhook items parsing error:", itemErr);
                         }
                     }
+                    (0, orders_1.invalidateStatsOverviewCache)();
                 }
             }
         }

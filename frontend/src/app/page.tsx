@@ -39,7 +39,7 @@ export default function HomePage() {
 
     const updateVideoSource = () => {
       if (!videoRef.current) return;
-      const targetSrc = mq.matches ? "/desktop_background.mp4" : "/mobile_backgrouns.mp4";
+      const targetSrc = mq.matches ? "/desktop_background.mp4" : "/mobile_background.mp4";
       const current = videoRef.current.currentSrc || videoRef.current.src;
       if (!current.endsWith(targetSrc)) {
         setVideoReady(false);
@@ -240,7 +240,7 @@ export default function HomePage() {
               href="/collections"
               className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#C47D5A] hover:text-[#A8623E] transition-colors"
             >
-              <span>View All 31 Pieces</span>
+              <span>{bestsellers.length > 0 ? `View All ${bestsellers.length} Pieces` : "View All Pieces"}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

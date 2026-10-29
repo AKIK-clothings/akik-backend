@@ -53,11 +53,13 @@ const getColorInfo = (color?: OrderItem["selected_color"]) => {
   return null;
 };
 
-const STATUS_OPTIONS = ["new", "confirmed", "dispatched", "delivered", "cancelled"];
+const STATUS_OPTIONS = ["new", "confirmed", "processing", "tailoring", "dispatched", "delivered", "cancelled"];
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-100 text-blue-700",
   confirmed: "bg-yellow-100 text-yellow-700",
+  processing: "bg-amber-100 text-amber-800",
+  tailoring: "bg-amber-100 text-amber-800",
   dispatched: "bg-purple-100 text-purple-700",
   delivered: "bg-green-100 text-green-700",
   cancelled: "bg-red-100 text-red-700",

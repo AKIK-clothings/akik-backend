@@ -179,7 +179,7 @@ export const CartDrawer: React.FC = () => {
 
                 <div className="flex flex-col gap-2.5 w-full max-w-xs">
                   <Link
-                    href="/collections?collection=embroidered-satin"
+                    href="/collections?sub=Embroidered+Satin+with+Dupatta"
                     onClick={closeCart}
                     className="flex items-center justify-center gap-2 py-3 px-4 bg-[#1F1E1D] text-[#FAF9F6] text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-[#C47D5A] transition-colors"
                   >

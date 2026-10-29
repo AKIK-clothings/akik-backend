@@ -47,8 +47,8 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
   const subParam = searchParams.getAll("sub");
   const colorParam = searchParams.getAll("color");
   const stockParam = searchParams.get("inStock") === "true";
-  const minPriceParam = Number(searchParams.get("minPrice")) || 1000;
-  const maxPriceParam = Number(searchParams.get("maxPrice")) || 10000;
+  const minPriceParam = searchParams.get("minPrice") !== null ? Number(searchParams.get("minPrice")) : 0;
+  const maxPriceParam = searchParams.get("maxPrice") !== null ? Number(searchParams.get("maxPrice")) : 50000;
   const sortParam = (searchParams.get("sort") as SortOption) || "featured";
   const searchParam = searchParams.get("q") || "";
   const wishlistParam = searchParams.get("wishlist") === "true";
@@ -127,7 +127,8 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
     colorParam.length > 0 ||
     stockParam ||
     wishlistParam ||
-    maxPriceParam < 10000 ||
+    minPriceParam > 0 ||
+    (searchParams.get("maxPrice") !== null && maxPriceParam < 50000) ||
     Boolean(searchParam);
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -190,9 +191,13 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
           return false;
         }
 
-        // Subcategory filter
-        if (subParam.length > 0 && !subParam.includes(product.subcategory)) {
-          return false;
+        // Subcategory filter (case-insensitive)
+        if (subParam.length > 0) {
+          const normalizedSelectedSubs = subParam.map((s) => s.trim().toLowerCase());
+          const productSub = (product.subcategory || "").trim().toLowerCase();
+          if (!normalizedSelectedSubs.includes(productSub)) {
+            return false;
+          }
         }
 
         // Color filter
@@ -224,7 +229,12 @@ export function MenCollectionContent({ defaultCategory = "kurta-sets" }: MenColl
         return true;
       })
       .sort((a, b) => {
-        if (sortParam === "newest") return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
+        if (sortParam === "newest") {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          if (timeA !== timeB) return timeB - timeA;
+          return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
+        }
         if (sortParam === "price-asc") return a.discountedPrice - b.discountedPrice;
         if (sortParam === "price-desc") return b.discountedPrice - a.discountedPrice;
         if (sortParam === "discount") {

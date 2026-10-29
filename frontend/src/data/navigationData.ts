@@ -21,7 +21,7 @@ export const ANNOUNCEMENT_ITEMS: AnnouncementItem[] = [
     text: "New In: Embroidered Satin Collections & Handcrafted Dupattas",
     highlightText: "Explore Now",
     badge: "New Launch",
-    link: "/collections?collection=embroidered-satin",
+    link: "/collections?sub=Embroidered+Satin+with+Dupatta",
   },
   {
     id: "contact-whatsapp",

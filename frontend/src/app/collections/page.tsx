@@ -34,8 +34,8 @@ function CollectionsContent() {
   const sizeParam = searchParams.getAll("size") as ApparelSize[];
   const colorParam = searchParams.getAll("color");
   const stockParam = searchParams.get("inStock") === "true";
-  const minPriceParam = Number(searchParams.get("minPrice")) || 1000;
-  const maxPriceParam = Number(searchParams.get("maxPrice")) || 10000;
+  const minPriceParam = searchParams.get("minPrice") !== null ? Number(searchParams.get("minPrice")) : 0;
+  const maxPriceParam = searchParams.get("maxPrice") !== null ? Number(searchParams.get("maxPrice")) : 50000;
   const sortParam = (searchParams.get("sort") as SortOption) || "featured";
   const searchParam = searchParams.get("q") || "";
   const wishlistParam = searchParams.get("wishlist") === "true";
@@ -132,7 +132,8 @@ function CollectionsContent() {
     colorParam.length > 0 ||
     stockParam ||
     wishlistParam ||
-    maxPriceParam < 10000 ||
+    minPriceParam > 0 ||
+    (searchParams.get("maxPrice") !== null && maxPriceParam < 50000) ||
     Boolean(searchParam);
 
   // Products state (live from API, fallback to mock)
@@ -195,13 +196,26 @@ function CollectionsContent() {
       }
 
       // Collection
-      if (collectionParam !== "all" && product.category !== collectionParam) {
-        return false;
+      if (collectionParam !== "all") {
+        if (collectionParam === "embroidered-satin") {
+          if (
+            product.category !== "unstitched" &&
+            !product.subcategory?.toLowerCase().includes("embroidered satin")
+          ) {
+            return false;
+          }
+        } else if (product.category !== collectionParam) {
+          return false;
+        }
       }
 
-      // Subcategory multi-select
-      if (subParam.length > 0 && !subParam.includes(product.subcategory)) {
-        return false;
+      // Subcategory multi-select (case-insensitive)
+      if (subParam.length > 0) {
+        const normalizedSelectedSubs = subParam.map((s) => s.trim().toLowerCase());
+        const productSub = (product.subcategory || "").trim().toLowerCase();
+        if (!normalizedSelectedSubs.includes(productSub)) {
+          return false;
+        }
       }
 
       // Size multi-select
@@ -238,7 +252,12 @@ function CollectionsContent() {
 
       return true;
     }).sort((a, b) => {
-      if (sortParam === "newest") return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
+      if (sortParam === "newest") {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (timeA !== timeB) return timeB - timeA;
+        return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
+      }
       if (sortParam === "price-asc") return a.discountedPrice - b.discountedPrice;
       if (sortParam === "price-desc") return b.discountedPrice - a.discountedPrice;
       if (sortParam === "discount") {
@@ -255,6 +274,8 @@ function CollectionsContent() {
     sizeParam,
     colorParam,
     stockParam,
+    wishlistParam,
+    isInWishlist,
     minPriceParam,
     maxPriceParam,
     sortParam,

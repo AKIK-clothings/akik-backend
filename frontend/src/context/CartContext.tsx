@@ -146,15 +146,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const itemId = `${product.id}-${selectedColorVariant.name}-${size}`;
 
+    const sm = product.sizeStockMap as Record<string, boolean | number> | undefined;
+    let availableInventory = 5;
+    if (sm) {
+      const val = sm[size];
+      if (typeof val === "number") {
+        availableInventory = Math.max(1, val);
+      } else if (typeof sm.total === "number") {
+        availableInventory = Math.max(1, sm.total);
+      }
+    }
+
     setCart((prevCart) => {
       const existingIndex = prevCart.findIndex((item) => item.id === itemId);
       if (existingIndex > -1) {
         const updated = [...prevCart];
+        const maxLimit = Math.min(updated[existingIndex].maxInventory || 5, availableInventory);
         const newQty = Math.min(
           updated[existingIndex].quantity + quantity,
-          updated[existingIndex].maxInventory
+          maxLimit
         );
-        updated[existingIndex] = { ...updated[existingIndex], quantity: newQty };
+        updated[existingIndex] = { ...updated[existingIndex], quantity: newQty, maxInventory: maxLimit };
         return updated;
       } else {
         const newItem: CartItem = {
@@ -167,8 +179,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
           selectedSize: size,
           regularPrice: product.regularPrice,
           discountedPrice: product.discountedPrice,
-          quantity,
-          maxInventory: 5,
+          quantity: Math.min(quantity, availableInventory),
+          maxInventory: availableInventory,
         };
         return [...prevCart, newItem];
       }

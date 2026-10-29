@@ -116,6 +116,7 @@ function TrackOrderContent() {
   const getStatusStep = (status: string) => {
     switch (status.toLowerCase()) {
       case "new":
+        return 0;
       case "confirmed":
         return 1;
       case "processing":
@@ -125,12 +126,15 @@ function TrackOrderContent() {
         return 3;
       case "delivered":
         return 4;
+      case "cancelled":
+        return -1;
       default:
-        return 1;
+        return 0;
     }
   };
 
-  const activeStep = order ? getStatusStep(order.status) : 1;
+  const activeStep = order ? getStatusStep(order.status) : 0;
+  const isCancelled = order ? order.status.toLowerCase() === "cancelled" : false;
 
   const STATUS_STEPS = [
     { title: "Order Placed", desc: "Payment received & logged" },
@@ -254,15 +258,31 @@ function TrackOrderContent() {
                 </h2>
               </div>
               <div className="text-left sm:text-right">
-                <span className="inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full uppercase tracking-wider">
+                <span
+                  className={`inline-block px-3 py-1 text-xs font-semibold rounded-full uppercase tracking-wider ${
+                    order.paymentStatus?.toLowerCase() === "paid"
+                      ? "bg-green-100 text-green-800"
+                      : order.paymentStatus?.toLowerCase() === "failed"
+                      ? "bg-rose-100 text-rose-800"
+                      : "bg-amber-100 text-amber-800"
+                  }`}
+                >
                   Payment: {order.paymentStatus}
                 </span>
               </div>
             </div>
 
-            {/* Stepper Steps */}
-            <div className="pt-6">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 relative">
+            {/* Stepper Steps / Cancelled Banner */}
+            {isCancelled ? (
+              <div className="mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs">
+                <p className="font-bold text-sm">Order Cancelled</p>
+                <p className="mt-1 leading-relaxed">
+                  This order has been marked as cancelled. If this is unexpected or you require assistance with a refund, please contact our atelier team.
+                </p>
+              </div>
+            ) : (
+              <div className="pt-6">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 relative">
                 {STATUS_STEPS.map((step, idx) => {
                   const isDone = idx <= activeStep;
                   const isCurrent = idx === activeStep;
@@ -303,6 +323,7 @@ function TrackOrderContent() {
                 })}
               </div>
             </div>
+            )}
           </div>
 
           {/* Reference Image Layout Receipt Card */}

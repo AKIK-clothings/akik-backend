@@ -13,9 +13,6 @@ const CATEGORIES_BY_SECTION: Record<"women" | "men", Array<{ value: string; labe
     { value: "stitched", label: "Stitched" },
     { value: "dupattas", label: "Dupattas" },
     { value: "kids", label: "Kids" },
-    { value: "embroidered-satin", label: "Embroidered Satin" },
-    { value: "luxury-cotton-satin", label: "Luxury Cotton Satin" },
-    { value: "satin-lucknowi", label: "Satin Lucknowi" },
   ],
   men: [
     { value: "kurta-sets", label: "Kurta Sets" },
@@ -377,7 +374,7 @@ export default function AdminEditProductPage() {
         colorVariants: validColors.map((c, i) => ({
           name: c.name,
           hexCode: c.hexCode,
-          imageSrc: updatedImages[i] || c.imageSrc || updatedImages[0] || "",
+          imageSrc: c.imageSrc || updatedImages[i] || updatedImages[0] || "",
           secondaryImageSrc: c.secondaryImageSrc || "",
           isSoldOut: Boolean(c.isSoldOut),
         })),
@@ -924,6 +921,27 @@ export default function AdminEditProductPage() {
               className="w-full px-4 py-2.5 bg-[#FAF9F6] border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A]"
             />
           </div>
+        </div>
+
+        {/* Accordions */}
+        <div className="bg-white rounded-xl border border-[#EAE5DE] p-6 shadow-sm space-y-4">
+          <h2 className="font-semibold text-[#1A1918]">Product Accordion Details</h2>
+          {[
+            { name: "fabricCare", label: "Fabric Care Instructions" },
+            { name: "stitchingDetails", label: "Stitching Details" },
+            { name: "shippingReturns", label: "Shipping & Returns" },
+          ].map(({ name, label }) => (
+            <div key={name}>
+              <label className="block text-xs font-medium text-[#75706B] mb-1.5 uppercase tracking-wider">{label}</label>
+              <textarea
+                name={name}
+                value={form[name as keyof typeof form] as string}
+                onChange={handleChange}
+                rows={2}
+                className="w-full px-4 py-2.5 bg-[#FAF9F6] border border-[#EAE5DE] rounded-lg text-sm focus:outline-none focus:border-[#C47D5A] resize-none transition-colors"
+              />
+            </div>
+          ))}
         </div>
 
         {/* Flags */}

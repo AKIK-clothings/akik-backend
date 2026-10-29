@@ -12,8 +12,68 @@ import {
   checkoutVerifyPaymentSchema,
   checkoutCodOrderSchema,
 } from "../middleware/validate";
+import { invalidateFeaturedCache } from "./products";
+import { invalidateStatsOverviewCache } from "./admin/orders";
 
 const router = Router();
+
+// ─── Decrement Inventory on Completed Order ──────────────────────────────────
+async function decrementInventory(
+  items: Array<{ productId?: string | null; selectedSize?: string; quantity: number }>
+) {
+  for (const item of items) {
+    if (!item.productId) continue;
+    try {
+      const { data: prod } = await supabase
+        .from("products")
+        .select("id, size_stock_map, is_sold_out")
+        .eq("id", item.productId)
+        .single();
+
+      if (!prod) continue;
+      const sm = (prod.size_stock_map || {}) as Record<string, any>;
+      let updatedSm = { ...sm };
+      let anyChanged = false;
+
+      const sizeKey = (item.selectedSize || "").trim();
+      if (typeof updatedSm[sizeKey] === "number") {
+        updatedSm[sizeKey] = Math.max(0, updatedSm[sizeKey] - (item.quantity || 1));
+        anyChanged = true;
+      }
+      if (typeof updatedSm.total === "number") {
+        updatedSm.total = Math.max(0, updatedSm.total - (item.quantity || 1));
+        anyChanged = true;
+      }
+
+      if (anyChanged) {
+        let isSoldOut = Boolean(prod.is_sold_out);
+        if (typeof updatedSm.total === "number" && updatedSm.total <= 0) {
+          isSoldOut = true;
+        } else {
+          const numericSizes = Object.entries(updatedSm).filter(
+            ([k, v]) => k !== "total" && typeof v === "number"
+          );
+          if (numericSizes.length > 0 && numericSizes.every(([_, v]) => (v as number) <= 0)) {
+            isSoldOut = true;
+          }
+        }
+
+        await supabase
+          .from("products")
+          .update({
+            size_stock_map: updatedSm,
+            is_sold_out: isSoldOut,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", prod.id);
+
+        invalidateFeaturedCache();
+      }
+    } catch (invErr) {
+      console.warn(`Failed inventory decrement for product ${item.productId}:`, invErr);
+    }
+  }
+}
 
 // ─── COD Idempotency Cache ─────────────────────────────────────────────────────
 interface CachedCodOrder {
@@ -158,6 +218,36 @@ async function calculateAuthoritativeTotals(
       );
       if (matchingVariant && matchingVariant.isSoldOut === true) {
         throw new Error(`Color "${matchingVariant.name}" for "${product.name}" is sold out`);
+      }
+    }
+
+    // Check size stock validation
+    const sizeStockMap = (product.size_stock_map || {}) as Record<string, any>;
+    if (sizeStockMap && Object.keys(sizeStockMap).length > 0) {
+      const requestedSize = (item.selectedSize || "").trim();
+      const isUnstitched =
+        product.category === "unstitched" ||
+        product.category === "dupattas" ||
+        product.section === "men" ||
+        requestedSize.toLowerCase() === "unstitched";
+
+      if (isUnstitched) {
+        if (typeof sizeStockMap.total === "number") {
+          if (sizeStockMap.total <= 0) {
+            throw new Error(`Product "${product.name}" is sold out`);
+          }
+          if (item.quantity > sizeStockMap.total) {
+            throw new Error(`Only ${sizeStockMap.total} piece(s) available for "${product.name}"`);
+          }
+        }
+      } else if (requestedSize && sizeStockMap[requestedSize] !== undefined) {
+        const val = sizeStockMap[requestedSize];
+        if (val === false || (typeof val === "number" && val <= 0)) {
+          throw new Error(`Size "${requestedSize}" for "${product.name}" is sold out`);
+        }
+        if (typeof val === "number" && item.quantity > val) {
+          throw new Error(`Only ${val} piece(s) available in size ${requestedSize} for "${product.name}"`);
+        }
       }
     }
 
@@ -566,6 +656,10 @@ router.post(
         .update({ whatsapp_notified: true })
         .eq("id", order.id);
 
+      // Decrement inventory and bust cache
+      await decrementInventory(verified.verifiedItems);
+      invalidateStatsOverviewCache();
+
       // Build customer WA confirmation URL (sent TO the customer's own phone)
       const customerWhatsAppUrl = buildCustomerWhatsAppMessage({
         orderNumber,
@@ -809,6 +903,10 @@ router.post(
         .update({ whatsapp_notified: true })
         .eq("id", order.id);
 
+      // Decrement inventory and bust cache
+      await decrementInventory(verified.verifiedItems);
+      invalidateStatsOverviewCache();
+
       // Build customer WA confirmation URL
       const customerWhatsAppUrl = buildCustomerWhatsAppMessage({
         orderNumber,
@@ -970,11 +1068,19 @@ router.post("/webhook", async (req: Request, res: Response): Promise<void> => {
                   line_total: (pi.unitPrice || amountPaid) * (pi.quantity || 1),
                 }));
                 await supabase.from("order_items").insert(orderItemsToInsert);
+                await decrementInventory(
+                  orderItemsToInsert.map((oi) => ({
+                    productId: oi.product_id,
+                    selectedSize: oi.selected_size,
+                    quantity: oi.quantity,
+                  }))
+                );
               }
             } catch (itemErr) {
               console.error("Webhook items parsing error:", itemErr);
             }
           }
+          invalidateStatsOverviewCache();
         }
       }
     }

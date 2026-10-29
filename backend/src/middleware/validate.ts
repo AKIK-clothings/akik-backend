@@ -170,7 +170,7 @@ export const adminPromoUpdateSchema = adminPromoCreateSchema.partial();
 
 export const adminOrderStatusSchema = z
   .object({
-    status: z.enum(["new", "confirmed", "dispatched", "delivered", "cancelled"]).optional(),
+    status: z.enum(["new", "confirmed", "processing", "tailoring", "dispatched", "delivered", "cancelled"]).optional(),
     paymentStatus: z.enum(["pending", "paid", "failed", "refunded"]).optional(),
     notes: z.string().trim().max(1000).optional().nullable(),
   })

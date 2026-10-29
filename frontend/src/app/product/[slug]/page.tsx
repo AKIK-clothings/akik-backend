@@ -617,7 +617,7 @@ export default function ProductDetailPage() {
               {/* WhatsApp Instant Enquiry Action */}
               <a
                 href={`https://wa.me/${CONTACT_INFO.phoneRaw}?text=${encodeURIComponent(
-                  `Hello AKIK by Hafsa Khatri,\n\nI would like to enquire about this product:\n• Name: ${product.name}\n• Price: ₹${product.discountedPrice.toLocaleString()}\n• Selected Size: ${selectedSize}\n• Shade: ${selectedColor.name}\n• SKU: ${product.sku}\n\nCould you please share availability and more details?`
+                  `Hello AKIK by Hafsa Khatri,\n\nI would like to enquire about this product:\n• Name: ${product.name}\n• Price: ₹${product.discountedPrice.toLocaleString()}\n• Selected Size: ${isUnstitched ? "Unstitched" : selectedSize}\n• Shade: ${selectedColor.name}\n• SKU: ${product.sku}\n\nCould you please share availability and more details?`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
