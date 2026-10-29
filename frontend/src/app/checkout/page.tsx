@@ -570,7 +570,17 @@ export default function CheckoutPage() {
                 {cart.map((item) => (
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-[#F5F3F0] border border-[#EAE5DE] shrink-0">
-                      <Image src={item.selectedColor.imageSrc} alt={item.name} fill className="object-cover" sizes="56px" />
+                      <Image
+                        src={
+                          item.selectedColor?.imageSrc && item.selectedColor.imageSrc.trim() !== ""
+                            ? item.selectedColor.imageSrc
+                            : "/images/embroidered-satin/blue-lavish-model.png"
+                        }
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                        sizes="56px"
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-[#1F1E1D] line-clamp-2 leading-tight">{item.name}</p>

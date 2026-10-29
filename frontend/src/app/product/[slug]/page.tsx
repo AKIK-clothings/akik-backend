@@ -57,9 +57,34 @@ export default function ProductDetailPage() {
         if (isMounted && data) {
           const mapped = mapApiProduct(data) as unknown as Product;
           setProduct(mapped);
+
+          const defaultFallbackImage =
+            mapped.primaryImage && mapped.primaryImage.trim() !== ""
+              ? mapped.primaryImage
+              : mapped.section === "men"
+              ? "/images/men/men-kurta-set.jpg"
+              : "/images/embroidered-satin/blue-lavish-model.png";
+
           const firstAvailableColor =
-            mapped.colorVariants?.find((c) => !c.isSoldOut) || mapped.colorVariants?.[0];
-          if (firstAvailableColor) setSelectedColor(firstAvailableColor);
+            mapped.colorVariants?.find((c) => !c.isSoldOut && c.imageSrc) ||
+            mapped.colorVariants?.find((c) => !c.isSoldOut) ||
+            mapped.colorVariants?.[0];
+
+          if (firstAvailableColor) {
+            setSelectedColor({
+              ...firstAvailableColor,
+              imageSrc:
+                firstAvailableColor.imageSrc && firstAvailableColor.imageSrc.trim() !== ""
+                  ? firstAvailableColor.imageSrc
+                  : defaultFallbackImage,
+            });
+          } else {
+            setSelectedColor({
+              name: "Default",
+              hexCode: "#C47D5A",
+              imageSrc: defaultFallbackImage,
+            });
+          }
           if (mapped.sizes?.[0]) setSelectedSize(mapped.sizes[0]);
         }
       })

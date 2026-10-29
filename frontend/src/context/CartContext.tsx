@@ -72,7 +72,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     api.warmUpBackend();
     try {
       const savedCart = localStorage.getItem("akik_cart");
-      if (savedCart) setCart(JSON.parse(savedCart));
+      if (savedCart) {
+        const parsed: CartItem[] = JSON.parse(savedCart);
+        const sanitized = Array.isArray(parsed)
+          ? parsed.map((item) => {
+              const hasValidImg =
+                typeof item.selectedColor?.imageSrc === "string" &&
+                item.selectedColor.imageSrc.trim() !== "";
+              return {
+                ...item,
+                selectedColor: {
+                  ...item.selectedColor,
+                  imageSrc: hasValidImg
+                    ? item.selectedColor.imageSrc
+                    : "/images/embroidered-satin/blue-lavish-model.png",
+                },
+              };
+            })
+          : [];
+        setCart(sanitized);
+      }
       const savedWishlist = localStorage.getItem("akik_wishlist");
       if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
     } catch (err) {
@@ -130,14 +149,34 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     color?: ColorVariant,
     quantity = 1
   ) => {
-    const selectedColorVariant =
-      color ||
-      product.colorVariants.find((c) => !c.isSoldOut) ||
-      product.colorVariants[0] || {
-        name: "Default",
-        hexCode: "#C47D5A",
-        imageSrc: product.primaryImage,
-      };
+    const fallbackImage =
+      product.primaryImage && product.primaryImage.trim() !== ""
+        ? product.primaryImage
+        : product.section === "men"
+        ? "/images/men/men-kurta-set.jpg"
+        : "/images/embroidered-satin/blue-lavish-model.png";
+
+    // Select color variant, guaranteeing valid non-empty imageSrc
+    const foundColor =
+      (color && color.name && color.name !== "Default")
+        ? color
+        : product.colorVariants.find((c) => !c.isSoldOut && c.imageSrc && c.imageSrc.trim() !== "") ||
+          product.colorVariants.find((c) => c.imageSrc && c.imageSrc.trim() !== "") ||
+          product.colorVariants[0];
+
+    const resolvedImageSrc =
+      (color?.imageSrc && color.imageSrc.trim() !== "")
+        ? color.imageSrc
+        : (foundColor?.imageSrc && foundColor.imageSrc.trim() !== "")
+        ? foundColor.imageSrc
+        : fallbackImage;
+
+    const selectedColorVariant: ColorVariant = {
+      name: foundColor?.name || color?.name || "Default",
+      hexCode: foundColor?.hexCode || color?.hexCode || "#C47D5A",
+      imageSrc: resolvedImageSrc,
+      isSoldOut: Boolean(foundColor?.isSoldOut || color?.isSoldOut),
+    };
 
     if (selectedColorVariant.isSoldOut) {
       showToast(`Color "${selectedColorVariant.name}" is currently sold out`);

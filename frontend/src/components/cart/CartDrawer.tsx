@@ -215,7 +215,11 @@ export const CartDrawer: React.FC = () => {
                       {/* Product Thumbnail (3:4 ratio) */}
                       <div className="relative aspect-[3/4] w-20 shrink-0 overflow-hidden rounded bg-[#F4EFEA] border border-[#EAE5DE]">
                         <Image
-                          src={item.selectedColor.imageSrc}
+                          src={
+                            item.selectedColor?.imageSrc && item.selectedColor.imageSrc.trim() !== ""
+                              ? item.selectedColor.imageSrc
+                              : "/images/embroidered-satin/blue-lavish-model.png"
+                          }
                           alt={item.name}
                           fill
                           sizes="80px"
