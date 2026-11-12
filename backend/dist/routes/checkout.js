@@ -21,6 +21,19 @@ async function decrementInventory(items) {
         if (!item.productId)
             continue;
         try {
+            const sizeKey = (item.selectedSize || "").trim();
+            const qty = Math.max(1, item.quantity || 1);
+            // Prefer atomic PostgreSQL row-locked decrement RPC (migration 004)
+            const { error: rpcErr } = await supabase_1.supabase.rpc("decrement_product_inventory", {
+                p_product_id: item.productId,
+                p_size: sizeKey,
+                p_qty: qty,
+            });
+            if (!rpcErr) {
+                (0, products_1.invalidateFeaturedCache)();
+                continue;
+            }
+            // Fallback when migration 004 RPC is not yet deployed
             const { data: prod } = await supabase_1.supabase
                 .from("products")
                 .select("id, size_stock_map, is_sold_out")
@@ -31,13 +44,12 @@ async function decrementInventory(items) {
             const sm = (prod.size_stock_map || {});
             let updatedSm = { ...sm };
             let anyChanged = false;
-            const sizeKey = (item.selectedSize || "").trim();
             if (typeof updatedSm[sizeKey] === "number") {
-                updatedSm[sizeKey] = Math.max(0, updatedSm[sizeKey] - (item.quantity || 1));
+                updatedSm[sizeKey] = Math.max(0, updatedSm[sizeKey] - qty);
                 anyChanged = true;
             }
             if (typeof updatedSm.total === "number") {
-                updatedSm.total = Math.max(0, updatedSm.total - (item.quantity || 1));
+                updatedSm.total = Math.max(0, updatedSm.total - qty);
                 anyChanged = true;
             }
             if (anyChanged) {
@@ -149,12 +161,17 @@ async function calculateAuthoritativeTotals(rawItems, requestedPromoCode) {
         }
         // Check size stock validation
         const sizeStockMap = (product.size_stock_map || {});
+        const requestedSize = (item.selectedSize || "").trim();
+        const isUnstitched = product.category === "unstitched" ||
+            product.category === "dupattas" ||
+            product.section === "men" ||
+            requestedSize.toLowerCase() === "unstitched";
+        if (!isUnstitched && Array.isArray(product.sizes) && product.sizes.length > 0) {
+            if (!requestedSize || !product.sizes.includes(requestedSize)) {
+                throw new Error(`Size "${requestedSize}" is not available for "${product.name}"`);
+            }
+        }
         if (sizeStockMap && Object.keys(sizeStockMap).length > 0) {
-            const requestedSize = (item.selectedSize || "").trim();
-            const isUnstitched = product.category === "unstitched" ||
-                product.category === "dupattas" ||
-                product.section === "men" ||
-                requestedSize.toLowerCase() === "unstitched";
             if (isUnstitched) {
                 if (typeof sizeStockMap.total === "number") {
                     if (sizeStockMap.total <= 0) {
@@ -245,14 +262,20 @@ router.post("/create-order", rateLimit_1.checkoutLimiter, (0, validate_1.validat
                 subtotal: verified.subtotal.toString(),
                 finalTotal: verified.finalTotal.toString(),
                 itemCount: verified.verifiedItems.length.toString(),
-                itemsJson: JSON.stringify(verified.verifiedItems.map((item) => ({
-                    productId: item.productId,
-                    name: item.name,
-                    color: item.selectedColor.name,
-                    size: item.selectedSize,
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                }))).slice(0, 490),
+                itemsJson: (() => {
+                    const compact = verified.verifiedItems.map((item) => ({
+                        p: item.productId,
+                        n: item.name.slice(0, 40),
+                        c: item.selectedColor.name.slice(0, 20),
+                        s: item.selectedSize,
+                        q: item.quantity,
+                        u: item.unitPrice,
+                    }));
+                    while (compact.length > 0 && JSON.stringify(compact).length > 490) {
+                        compact.pop();
+                    }
+                    return JSON.stringify(compact);
+                })(),
             },
         });
         // Provide public keyId to client for checkout modal
@@ -322,6 +345,30 @@ router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.valid
             res.status(400).json({ error: "Payment verification failed — invalid signature" });
             return;
         }
+        // ── Server-side authoritative total recalculation (SEC-01) ───────────────
+        const verified = await calculateAuthoritativeTotals(items, promoCode);
+        // ── Verify paid amount & status directly with Razorpay API ──────────────
+        const [rzpOrder, rzpPayment] = await Promise.all([
+            razorpay_1.razorpay.orders.fetch(razorpayOrderId),
+            razorpay_1.razorpay.payments.fetch(razorpayPaymentId),
+        ]);
+        const expectedPaise = verified.finalTotal * 100;
+        const paidPaise = Number(rzpPayment.amount);
+        const orderPaise = Number(rzpOrder.amount);
+        const validPaymentStatus = rzpPayment.status === "captured" || rzpPayment.status === "authorized";
+        if (rzpPayment.order_id !== razorpayOrderId ||
+            rzpPayment.currency !== "INR" ||
+            !validPaymentStatus ||
+            paidPaise !== expectedPaise ||
+            orderPaise !== expectedPaise) {
+            res.status(400).json({
+                error: "Payment verification failed — paid amount or status does not match order total",
+            });
+            return;
+        }
+        if (rzpPayment.status === "authorized") {
+            await razorpay_1.razorpay.payments.capture(razorpayPaymentId, expectedPaise, "INR");
+        }
         // ── Idempotency Check (HIGH-21) ──────────────────────────────────────────
         const { data: existingOrder } = await supabase_1.supabase
             .from("orders")
@@ -364,16 +411,21 @@ router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.valid
                 .select("id")
                 .eq("order_id", existingOrder.id)
                 .limit(1);
-            let verifiedItemsForReceipt = items.map((item) => ({
-                name: item.name || "Boutique Ensemble",
+            let verifiedItemsForReceipt = verified.verifiedItems.map((item) => ({
+                name: item.name,
                 selectedSize: item.selectedSize,
                 selectedColor: item.selectedColor.name,
                 quantity: item.quantity,
-                unitPrice: 0,
+                unitPrice: item.unitPrice,
             }));
             if (!existingItems || existingItems.length === 0) {
                 try {
-                    const verified = await calculateAuthoritativeTotals(items, promoCode);
+                    if (Math.round((existingOrder.final_total || 0) * 100) !== expectedPaise) {
+                        res.status(400).json({
+                            error: "Payment verification failed — order total mismatch",
+                        });
+                        return;
+                    }
                     const orderItems = verified.verifiedItems.map((item) => ({
                         order_id: existingOrder.id,
                         product_id: item.productId,
@@ -416,10 +468,9 @@ router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.valid
             });
             return;
         }
-        // ── Server-side authoritative total recalculation (SEC-01) ───────────────
-        const verified = await calculateAuthoritativeTotals(items, promoCode);
         // ── Atomic Promo Verification & Lock (SEC-09) ─────────────────────────────
         let promoAppliedAtomically = false;
+        let promoRaceNote = null;
         if (verified.appliedPromoCode) {
             try {
                 const { data: promoResult, error: rpcErr } = await supabase_1.supabase.rpc("apply_promo_atomic", {
@@ -431,10 +482,9 @@ router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.valid
                         promoAppliedAtomically = true;
                     }
                     else {
-                        console.warn("Atomic promo validation rejected code:", promoResult[0].message);
-                        verified.couponDiscount = 0;
-                        verified.appliedPromoCode = undefined;
-                        verified.finalTotal = Math.max(0, verified.subtotal + verified.shippingFee);
+                        // Payment already captured at discounted amount; keep paid finalTotal in sync with Razorpay
+                        console.warn("Atomic promo validation rejected code post-capture:", promoResult[0].message);
+                        promoRaceNote = `Promo code ${verified.appliedPromoCode} reached limit concurrently during payment (${promoResult[0].message}).`;
                     }
                 }
             }
@@ -477,6 +527,7 @@ router.post("/verify-payment", rateLimit_1.checkoutLimiter, (0, validate_1.valid
             razorpay_payment_id: razorpayPaymentId,
             payment_status: "paid",
             status: "confirmed",
+            ...(promoRaceNote ? { notes: promoRaceNote } : {}),
         })
             .select()
             .single();
@@ -588,39 +639,8 @@ router.post("/create-cod-order", rateLimit_1.checkoutLimiter, (0, validate_1.val
             .limit(1)
             .maybeSingle();
         if (recentOrder) {
-            const addressParts = [
-                customer.addressLine1,
-                customer.addressLine2,
-                customer.city,
-                customer.state,
-                customer.pinCode,
-            ].filter(Boolean);
-            const fullAddress = addressParts.join(", ");
-            const customerWhatsAppUrl = (0, whatsapp_1.buildCustomerWhatsAppMessage)({
-                orderNumber: recentOrder.order_number,
-                customerName: customer.name,
-                customerPhone: customer.phone,
-                address: fullAddress,
-                items: items.map((i) => ({
-                    name: i.name || "Boutique Ensemble",
-                    selectedSize: i.selectedSize,
-                    selectedColor: i.selectedColor?.name || "Default",
-                    quantity: i.quantity,
-                    unitPrice: 0,
-                })),
-                finalTotal: recentOrder.final_total,
-                shippingFee: 0,
-                paymentMethod: "cod",
-                paymentStatus: "pending",
-            });
-            res.json({
-                success: true,
-                orderNumber: recentOrder.order_number,
-                customerWhatsAppUrl,
-                paymentMethod: "cod",
-                paymentStatus: "pending",
-                finalTotal: recentOrder.final_total,
-                message: "Order already placed successfully.",
+            res.status(409).json({
+                error: "A Cash on Delivery order was recently placed for this mobile number. Please wait 30 seconds before placing another order.",
             });
             return;
         }
@@ -651,9 +671,18 @@ router.post("/create-cod-order", rateLimit_1.checkoutLimiter, (0, validate_1.val
                         verified.finalTotal = Math.max(0, verified.subtotal + verified.shippingFee);
                     }
                 }
+                else {
+                    console.warn("Atomic promo check RPC error for COD, clearing promo:", rpcErr?.message);
+                    verified.couponDiscount = 0;
+                    verified.appliedPromoCode = undefined;
+                    verified.finalTotal = Math.max(0, verified.subtotal + verified.shippingFee);
+                }
             }
             catch (rpcEx) {
-                console.warn("Atomic promo check RPC failed, proceeding with verified totals:", rpcEx);
+                console.warn("Atomic promo check RPC failed for COD, clearing promo:", rpcEx);
+                verified.couponDiscount = 0;
+                verified.appliedPromoCode = undefined;
+                verified.finalTotal = Math.max(0, verified.subtotal + verified.shippingFee);
             }
         }
         // ── 6. Build address string ─────────────────────────────────────────────
@@ -716,7 +745,9 @@ router.post("/create-cod-order", rateLimit_1.checkoutLimiter, (0, validate_1.val
             await supabase_1.supabase.from("orders").delete().eq("id", order.id);
             throw itemsError;
         }
-        // ── 10. Background post-order tasks (Non-blocking for instant client response) ──
+        // ── 10. Synchronous inventory decrement + non-blocking metadata updates ──
+        await decrementInventory(verified.verifiedItems);
+        (0, orders_1.invalidateStatsOverviewCache)();
         setImmediate(async () => {
             try {
                 if (verified.appliedPromoCode && !promoAppliedAtomically) {
@@ -728,8 +759,6 @@ router.post("/create-cod-order", rateLimit_1.checkoutLimiter, (0, validate_1.val
                     .from("orders")
                     .update({ whatsapp_notified: true })
                     .eq("id", order.id);
-                await decrementInventory(verified.verifiedItems);
-                (0, orders_1.invalidateStatsOverviewCache)();
             }
             catch (bgErr) {
                 console.error("Async post-order tasks error for COD:", bgErr);
@@ -870,16 +899,20 @@ router.post("/webhook", async (req, res) => {
                         try {
                             const parsedItems = JSON.parse(notes.itemsJson);
                             if (Array.isArray(parsedItems) && parsedItems.length > 0) {
-                                const orderItemsToInsert = parsedItems.map((pi) => ({
-                                    order_id: newOrder.id,
-                                    product_id: pi.productId || null,
-                                    product_name: pi.name || "Boutique Ensemble",
-                                    selected_color: { name: pi.color || "Default", hexCode: "#C47D5A", imageSrc: "" },
-                                    selected_size: pi.size || "M",
-                                    quantity: pi.quantity || 1,
-                                    unit_price: pi.unitPrice || amountPaid,
-                                    line_total: (pi.unitPrice || amountPaid) * (pi.quantity || 1),
-                                }));
+                                const orderItemsToInsert = parsedItems.map((pi) => {
+                                    const unitPrice = pi.u ?? pi.unitPrice ?? amountPaid;
+                                    const quantity = pi.q ?? pi.quantity ?? 1;
+                                    return {
+                                        order_id: newOrder.id,
+                                        product_id: pi.p || pi.productId || null,
+                                        product_name: pi.n || pi.name || "Boutique Ensemble",
+                                        selected_color: { name: pi.c || pi.color || "Default", hexCode: "#C47D5A", imageSrc: "" },
+                                        selected_size: pi.s || pi.size || "M",
+                                        quantity,
+                                        unit_price: unitPrice,
+                                        line_total: unitPrice * quantity,
+                                    };
+                                });
                                 await supabase_1.supabase.from("order_items").insert(orderItemsToInsert);
                                 await decrementInventory(orderItemsToInsert.map((oi) => ({
                                     productId: oi.product_id,

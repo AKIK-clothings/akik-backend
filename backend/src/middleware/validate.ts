@@ -185,3 +185,8 @@ export const adminOrderStatusSchema = z
 export const adminEnquiryUpdateSchema = z.object({
   isRead: z.boolean().optional().default(true),
 });
+
+export const adminProductStockSchema = z.object({
+  isSoldOut: z.boolean(),
+  sizeStockMap: z.record(z.string(), z.union([z.boolean(), z.number().int().min(0)])).optional().default({}),
+});

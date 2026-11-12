@@ -11,8 +11,10 @@ router.use(auth_1.requireAdmin);
 router.get("/", async (req, res) => {
     try {
         const { status, page = "1", limit = "20", date } = req.query;
-        const pageNum = Math.max(1, Number(page));
-        const limitNum = Math.min(100, Number(limit));
+        const parsedPage = Number.parseInt(String(page), 10);
+        const pageNum = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+        const parsedLimit = Number.parseInt(String(limit), 10);
+        const limitNum = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 20;
         const from = (pageNum - 1) * limitNum;
         const to = from + limitNum - 1;
         let query = supabase_1.supabase

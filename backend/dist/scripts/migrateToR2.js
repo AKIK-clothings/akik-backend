@@ -48,7 +48,7 @@ async function uploadToR2(key, buffer, contentType = "image/webp") {
 }
 /** Replace a Supabase URL with its R2 equivalent */
 async function migrateUrl(url, migrated) {
-    if (!url || !url.includes("supabase.co"))
+    if (!url || !url.startsWith(SUPABASE_STORAGE_BASE))
         return url;
     // Return cached result if already migrated
     if (migrated.has(url))

@@ -54,11 +54,11 @@ app.use((0, cors_1.default)({
         // Allow requests with no origin (mobile apps, curl, server-to-server)
         if (!origin)
             return callback(null, true);
-        const isAllowed = ALLOWED_ORIGINS.includes(origin) ||
-            /\.vercel\.app$/.test(origin) ||
-            /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
-            /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) ||
-            /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin);
+        const isLocalOrigin = process.env.NODE_ENV !== "production" &&
+            (/^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+                /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) ||
+                /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin));
+        const isAllowed = ALLOWED_ORIGINS.includes(origin) || isLocalOrigin;
         if (isAllowed) {
             callback(null, true);
         }
@@ -84,7 +84,7 @@ app.get("/ping", (_req, res) => {
     res.status(200).json({ status: "ok", timestamp: Date.now() });
 });
 // ─── Health & Readiness Check ──────────────────────────────────────────────────
-app.get("/health", async (_req, res) => {
+app.get("/health", rateLimit_1.apiLimiter, async (_req, res) => {
     try {
         const start = Date.now();
         const { error } = await supabase_1.supabase.from("products").select("id").limit(1);
@@ -94,7 +94,7 @@ app.get("/health", async (_req, res) => {
                 status: "degraded",
                 service: "AKIK by Hafsa Khatri — Backend API",
                 database: "disconnected",
-                error: error.message,
+                ...(process.env.NODE_ENV !== "production" ? { error: error.message } : {}),
                 timestamp: new Date().toISOString(),
             });
             return;
@@ -112,7 +112,9 @@ app.get("/health", async (_req, res) => {
             status: "error",
             service: "AKIK by Hafsa Khatri — Backend API",
             database: "unreachable",
-            error: err?.message || "Internal database probe error",
+            ...(process.env.NODE_ENV !== "production"
+                ? { error: err?.message || "Internal database probe error" }
+                : {}),
             timestamp: new Date().toISOString(),
         });
     }

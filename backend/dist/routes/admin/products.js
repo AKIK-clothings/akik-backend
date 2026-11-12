@@ -226,6 +226,17 @@ router.delete("/:id", (0, validate_1.validateUuidParam)("id"), async (req, res) 
         if (error)
             throw error;
         (0, products_1.invalidateFeaturedCache)();
+        // Clean up orphaned R2 objects for this product (non-fatal)
+        try {
+            const listed = await r2_1.r2Client.send(new client_s3_1.ListObjectsV2Command({ Bucket: r2_1.R2_BUCKET, Prefix: `products/${id}/` }));
+            const keys = (listed.Contents || []).map((obj) => ({ Key: obj.Key })).filter((o) => o.Key);
+            if (keys.length > 0) {
+                await r2_1.r2Client.send(new client_s3_1.DeleteObjectsCommand({ Bucket: r2_1.R2_BUCKET, Delete: { Objects: keys } }));
+            }
+        }
+        catch (r2Err) {
+            console.warn(`Non-fatal R2 cleanup failure for deleted product ${id}:`, r2Err);
+        }
         res.json({ success: true, message: "Product deleted successfully" });
     }
     catch (err) {
@@ -235,7 +246,7 @@ router.delete("/:id", (0, validate_1.validateUuidParam)("id"), async (req, res) 
 });
 // ─── PATCH /api/admin/products/:id/stock ─────────────────────────────────────
 // Quick stock toggle — mark product as sold out / back in stock
-router.patch("/:id/stock", (0, validate_1.validateUuidParam)("id"), async (req, res) => {
+router.patch("/:id/stock", (0, validate_1.validateUuidParam)("id"), (0, validate_1.validateBody)(validate_1.adminProductStockSchema), async (req, res) => {
     try {
         const { id } = req.params;
         const { isSoldOut, sizeStockMap } = req.body;
@@ -269,6 +280,15 @@ router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upl
             res.status(400).json({ error: "No images provided" });
             return;
         }
+        const { data: existingProduct } = await supabase_1.supabase
+            .from("products")
+            .select("id")
+            .eq("id", id)
+            .maybeSingle();
+        if (!existingProduct) {
+            res.status(404).json({ error: "Product not found" });
+            return;
+        }
         const allowedExts = ["jpg", "jpeg", "png", "webp", "jfif", "avif"];
         for (const file of files) {
             const fileExt = file.originalname.split(".").pop()?.toLowerCase();
@@ -277,8 +297,9 @@ router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upl
                 return;
             }
         }
-        // Compress and upload images concurrently to avoid timeouts
-        const uploadedUrls = await Promise.all(files.map(async (file) => {
+        // Process sequentially to bound Sharp memory usage on small containers
+        const uploadedUrls = [];
+        for (const file of files) {
             const compressedBuffer = await (0, sharp_1.default)(file.buffer)
                 .rotate()
                 .resize({ width: 1200, withoutEnlargement: true, fit: "inside" })
@@ -292,8 +313,8 @@ router.post("/:id/images", (0, validate_1.validateUuidParam)("id"), upload_1.upl
                 ContentType: "image/webp",
                 CacheControl: "public, max-age=31536000, immutable",
             }));
-            return (0, r2_1.getR2PublicUrl)(key);
-        }));
+            uploadedUrls.push((0, r2_1.getR2PublicUrl)(key));
+        }
         res.json({
             success: true,
             urls: uploadedUrls,

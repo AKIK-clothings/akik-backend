@@ -58,7 +58,7 @@ async function migrateUrl(
   url: string,
   migrated: Map<string, string>
 ): Promise<string> {
-  if (!url || !url.includes("supabase.co")) return url;
+  if (!url || !url.startsWith(SUPABASE_STORAGE_BASE)) return url;
 
   // Return cached result if already migrated
   if (migrated.has(url)) return migrated.get(url)!;

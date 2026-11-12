@@ -140,7 +140,12 @@ async function fetchCatalogWithFallback(edgePath: string, directPath: string): P
 
 function revalidateCatalogEdgeCache(): void {
   if (typeof window !== "undefined") {
-    fetch("/api/catalog/revalidate", { method: "POST" }).catch(() => {});
+    const token = sessionStorage.getItem("akik_admin_token");
+    fetch("/api/catalog/revalidate", {
+      method: "POST",
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).catch(() => {});
   }
 }
 

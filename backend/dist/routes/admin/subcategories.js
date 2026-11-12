@@ -63,13 +63,22 @@ router.post("/", (0, validate_1.validateBody)(validate_1.subcategoryCreateSchema
             return;
         }
         // Check if duplicate subcategory already exists within this section (case-insensitive)
-        const { data: existing, error: findError } = await supabase_1.supabase
+        const { data: existingBySlug } = await supabase_1.supabase
             .from("sub_categories")
             .select("*")
             .eq("section", section)
-            .or(`slug.eq.${slug},name.ilike.${cleanName}`)
+            .eq("slug", slug)
             .maybeSingle();
-        if (!findError && existing) {
+        const { data: existingByName } = existingBySlug
+            ? { data: null }
+            : await supabase_1.supabase
+                .from("sub_categories")
+                .select("*")
+                .eq("section", section)
+                .ilike("name", cleanName)
+                .maybeSingle();
+        const existing = existingBySlug || existingByName;
+        if (existing) {
             res.status(200).json({
                 subcategory: existing,
                 message: `Subcategory "${existing.name}" already exists for ${section}.`,

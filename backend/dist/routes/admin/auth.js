@@ -41,7 +41,10 @@ router.post("/login", rateLimit_1.authLimiter, (0, validate_1.validateBody)(vali
             res.status(500).json({ error: "Server configuration error: JWT_SECRET not configured" });
             return;
         }
-        const token = jsonwebtoken_1.default.sign({ id: admin.id, email: admin.email, role: admin.role || "admin" }, jwtSecret, { expiresIn: (process.env.JWT_EXPIRES_IN || "7d") });
+        const token = jsonwebtoken_1.default.sign({ id: admin.id, email: admin.email, role: admin.role || "admin" }, jwtSecret, {
+            algorithm: "HS256",
+            expiresIn: (process.env.JWT_EXPIRES_IN || "7d"),
+        });
         res.cookie("akik_admin_token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -70,7 +73,10 @@ router.post("/logout", (req, res) => {
     const token = cookieToken || (authHeader ? authHeader.split(" ")[1] : "");
     if (token && process.env.JWT_SECRET) {
         try {
-            const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+            const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET, {
+                algorithms: ["HS256"],
+            });
+            (0, auth_1.revokeAdminToken)(token, decoded?.exp);
             if (decoded?.id) {
                 (0, auth_1.invalidateAdminAuthCache)(decoded.id);
             }

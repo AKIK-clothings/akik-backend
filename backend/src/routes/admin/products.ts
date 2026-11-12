@@ -4,13 +4,14 @@ import { requireAdmin } from "../../middleware/auth";
 import { upload } from "../../middleware/upload";
 import { slugify } from "../../utils/slugify";
 import sharp from "sharp";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { r2Client, R2_BUCKET, getR2PublicUrl } from "../../config/r2";
 import {
   validateBody,
   validateUuidParam,
   adminProductCreateSchema,
   adminProductUpdateSchema,
+  adminProductStockSchema,
 } from "../../middleware/validate";
 import { invalidateFeaturedCache } from "../products";
 
@@ -255,6 +256,21 @@ router.delete("/:id", validateUuidParam("id"), async (req: Request, res: Respons
     if (error) throw error;
     invalidateFeaturedCache();
 
+    // Clean up orphaned R2 objects for this product (non-fatal)
+    try {
+      const listed = await r2Client.send(
+        new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: `products/${id}/` })
+      );
+      const keys = (listed.Contents || []).map((obj) => ({ Key: obj.Key! })).filter((o) => o.Key);
+      if (keys.length > 0) {
+        await r2Client.send(
+          new DeleteObjectsCommand({ Bucket: R2_BUCKET, Delete: { Objects: keys } })
+        );
+      }
+    } catch (r2Err) {
+      console.warn(`Non-fatal R2 cleanup failure for deleted product ${id}:`, r2Err);
+    }
+
     res.json({ success: true, message: "Product deleted successfully" });
   } catch (err) {
     console.error("Admin DELETE /products/:id error:", err);
@@ -264,7 +280,7 @@ router.delete("/:id", validateUuidParam("id"), async (req: Request, res: Respons
 
 // ─── PATCH /api/admin/products/:id/stock ─────────────────────────────────────
 // Quick stock toggle — mark product as sold out / back in stock
-router.patch("/:id/stock", validateUuidParam("id"), async (req: Request, res: Response): Promise<void> => {
+router.patch("/:id/stock", validateUuidParam("id"), validateBody(adminProductStockSchema), async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { isSoldOut, sizeStockMap } = req.body;
@@ -305,6 +321,17 @@ router.post(
         return;
       }
 
+      const { data: existingProduct } = await supabase
+        .from("products")
+        .select("id")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (!existingProduct) {
+        res.status(404).json({ error: "Product not found" });
+        return;
+      }
+
       const allowedExts = ["jpg", "jpeg", "png", "webp", "jfif", "avif"];
 
       for (const file of files) {
@@ -315,30 +342,29 @@ router.post(
         }
       }
 
-      // Compress and upload images concurrently to avoid timeouts
-      const uploadedUrls = await Promise.all(
-        files.map(async (file) => {
-          const compressedBuffer = await sharp(file.buffer)
-            .rotate()
-            .resize({ width: 1200, withoutEnlargement: true, fit: "inside" })
-            .webp({ quality: 80, effort: 4 })
-            .toBuffer();
+      // Process sequentially to bound Sharp memory usage on small containers
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const compressedBuffer = await sharp(file.buffer)
+          .rotate()
+          .resize({ width: 1200, withoutEnlargement: true, fit: "inside" })
+          .webp({ quality: 80, effort: 4 })
+          .toBuffer();
 
-          const key = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
+        const key = `products/${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
 
-          await r2Client.send(
-            new PutObjectCommand({
-              Bucket: R2_BUCKET,
-              Key: key,
-              Body: compressedBuffer,
-              ContentType: "image/webp",
-              CacheControl: "public, max-age=31536000, immutable",
-            })
-          );
+        await r2Client.send(
+          new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: key,
+            Body: compressedBuffer,
+            ContentType: "image/webp",
+            CacheControl: "public, max-age=31536000, immutable",
+          })
+        );
 
-          return getR2PublicUrl(key);
-        })
-      );
+        uploadedUrls.push(getR2PublicUrl(key));
+      }
 
       res.json({
         success: true,

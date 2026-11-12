@@ -44,10 +44,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const adminData = sessionStorage.getItem("akik_admin_info");
     const adminToken = sessionStorage.getItem("akik_admin_token");
     if (!adminData && !adminToken) {
-      router.push("/admin/login");
+      router.replace("/admin/login");
       return;
     }
-    
+
     if (adminData) {
       try {
         const parsed = JSON.parse(adminData);
@@ -55,19 +55,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       } catch { /* ignore */ }
     }
 
-    setIsAuthorizing(false);
-
-    // Server-side token validation (cached with SWR to prevent duplicate calls on tab change)
+    // Server-side token validation: block rendering until verified
+    let cancelled = false;
     adminApi
       .getMe()
       .then((res) => {
-        if (res.admin?.name) {
+        if (cancelled) return;
+        if (!res?.admin) {
+          throw new Error("Invalid session");
+        }
+        if (res.admin.name) {
           setAdminName(res.admin.name);
         }
+        setIsAuthorizing(false);
       })
-      .catch((err) => {
-        console.warn("Session check warning:", err);
+      .catch(() => {
+        if (cancelled) return;
+        sessionStorage.removeItem("akik_admin_token");
+        sessionStorage.removeItem("akik_admin_info");
+        router.replace("/admin/login");
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, router]);
 
   const handleLogout = async () => {

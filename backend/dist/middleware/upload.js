@@ -26,7 +26,7 @@ exports.upload = (0, multer_1.default)({
         const mime = (file.mimetype || "").toLowerCase();
         const isAllowedMime = allowedMimes.includes(mime);
         const hasValidExt = Boolean(file.originalname.toLowerCase().match(/\.(jpe?g|png|webp|jfif|avif)$/));
-        if (isAllowedMime || hasValidExt) {
+        if (isAllowedMime && hasValidExt) {
             cb(null, true);
         }
         else {

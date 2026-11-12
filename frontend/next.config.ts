@@ -48,7 +48,7 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
 
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com",
+      `script-src 'self' 'unsafe-inline' ${isProd ? "" : "'unsafe-eval' "}https://checkout.razorpay.com`,
 
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 

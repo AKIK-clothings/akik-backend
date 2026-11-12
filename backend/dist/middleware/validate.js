@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.adminEnquiryUpdateSchema = exports.adminOrderStatusSchema = exports.adminPromoUpdateSchema = exports.adminPromoCreateSchema = exports.subcategoryCreateSchema = exports.adminProductUpdateSchema = exports.adminProductCreateSchema = exports.enquirySubmitSchema = exports.promoValidateSchema = exports.adminLoginSchema = exports.checkoutCodOrderSchema = exports.checkoutVerifyPaymentSchema = exports.customerAddressSchema = exports.checkoutCreateOrderSchema = exports.checkoutItemSchema = exports.validateUuidParam = exports.validateBody = void 0;
+exports.adminProductStockSchema = exports.adminEnquiryUpdateSchema = exports.adminOrderStatusSchema = exports.adminPromoUpdateSchema = exports.adminPromoCreateSchema = exports.subcategoryCreateSchema = exports.adminProductUpdateSchema = exports.adminProductCreateSchema = exports.enquirySubmitSchema = exports.promoValidateSchema = exports.adminLoginSchema = exports.checkoutCodOrderSchema = exports.checkoutVerifyPaymentSchema = exports.customerAddressSchema = exports.checkoutCreateOrderSchema = exports.checkoutItemSchema = exports.validateUuidParam = exports.validateBody = void 0;
 const zod_1 = require("zod");
 const validateBody = (schema) => async (req, res, next) => {
     try {
@@ -158,4 +158,8 @@ exports.adminOrderStatusSchema = zod_1.z
 // ─── Admin Enquiry Schemas (HIGH-07) ───────────────────────────────────────────
 exports.adminEnquiryUpdateSchema = zod_1.z.object({
     isRead: zod_1.z.boolean().optional().default(true),
+});
+exports.adminProductStockSchema = zod_1.z.object({
+    isSoldOut: zod_1.z.boolean(),
+    sizeStockMap: zod_1.z.record(zod_1.z.string(), zod_1.z.union([zod_1.z.boolean(), zod_1.z.number().int().min(0)])).optional().default({}),
 });

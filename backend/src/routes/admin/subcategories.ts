@@ -74,14 +74,25 @@ router.post(
       }
 
       // Check if duplicate subcategory already exists within this section (case-insensitive)
-      const { data: existing, error: findError } = await supabase
+      const { data: existingBySlug } = await supabase
         .from("sub_categories")
         .select("*")
         .eq("section", section)
-        .or(`slug.eq.${slug},name.ilike.${cleanName}`)
+        .eq("slug", slug)
         .maybeSingle();
 
-      if (!findError && existing) {
+      const { data: existingByName } = existingBySlug
+        ? { data: null }
+        : await supabase
+            .from("sub_categories")
+            .select("*")
+            .eq("section", section)
+            .ilike("name", cleanName)
+            .maybeSingle();
+
+      const existing = existingBySlug || existingByName;
+
+      if (existing) {
         res.status(200).json({
           subcategory: existing,
           message: `Subcategory "${existing.name}" already exists for ${section}.`,

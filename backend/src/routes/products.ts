@@ -39,6 +39,13 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       section,
     } = req.query;
 
+    const parsedLimit = Number.parseInt(String(limit), 10);
+    const safeLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 100;
+    const parsedMinPrice = minPrice !== undefined ? Number(minPrice) : undefined;
+    const safeMinPrice = parsedMinPrice !== undefined && Number.isFinite(parsedMinPrice) && parsedMinPrice >= 0 ? parsedMinPrice : undefined;
+    const parsedMaxPrice = maxPrice !== undefined ? Number(maxPrice) : undefined;
+    const safeMaxPrice = parsedMaxPrice !== undefined && Number.isFinite(parsedMaxPrice) && parsedMaxPrice >= 0 ? parsedMaxPrice : undefined;
+
     let products: any[] | null = null;
 
     // Fast path: serve base active products from memory cache when no DB-specific text search is used
@@ -55,10 +62,10 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       sort === "featured" &&
       !category &&
       !section &&
-      !minPrice &&
-      !maxPrice &&
+      !safeMinPrice &&
+      !safeMaxPrice &&
       !inStock &&
-      Number(limit) >= 100
+      safeLimit >= 100
     ) {
       const { data, error } = await supabase
         .from("products")
@@ -67,7 +74,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         .order("is_featured", { ascending: false })
         .order("is_best_seller", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(Number(limit));
+        .limit(safeLimit);
       if (error) throw error;
       products = data || [];
       cachedAllActiveProducts = { data: products, cachedAt: Date.now() };
@@ -90,8 +97,8 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       }
 
       // Price range filter
-      if (minPrice) query = query.gte("discounted_price", Number(minPrice));
-      if (maxPrice) query = query.lte("discounted_price", Number(maxPrice));
+      if (safeMinPrice !== undefined) query = query.gte("discounted_price", safeMinPrice);
+      if (safeMaxPrice !== undefined) query = query.lte("discounted_price", safeMaxPrice);
 
       // In-stock only
       if (inStock === "true") query = query.eq("is_sold_out", false);
@@ -127,7 +134,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
             .order("created_at", { ascending: false });
       }
 
-      query = query.limit(Number(limit));
+      query = query.limit(safeLimit);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -139,8 +146,8 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
           if ((p.section || "women") !== section.toLowerCase().trim()) return false;
         }
         if (category && category !== "all" && p.category !== category) return false;
-        if (minPrice && p.discounted_price < Number(minPrice)) return false;
-        if (maxPrice && p.discounted_price > Number(maxPrice)) return false;
+        if (safeMinPrice !== undefined && p.discounted_price < safeMinPrice) return false;
+        if (safeMaxPrice !== undefined && p.discounted_price > safeMaxPrice) return false;
         if (inStock === "true" && p.is_sold_out) return false;
         return true;
       });

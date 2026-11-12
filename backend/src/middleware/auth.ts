@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { supabase } from "../config/supabase";
 
@@ -17,6 +18,37 @@ interface CachedAdminRecord {
 // In-memory micro-cache to prevent hammering Supabase admins table on every request
 const adminAuthCache = new Map<string, CachedAdminRecord>();
 const ADMIN_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+// In-memory token revocation store (keyed by SHA-256 hash of JWT, value = expiry ms)
+const revokedTokens = new Map<string, number>();
+
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+export const revokeAdminToken = (token: string, expSeconds?: number): void => {
+  if (!token) return;
+  const now = Date.now();
+  // Prune expired entries periodically
+  if (revokedTokens.size > 500) {
+    for (const [k, expMs] of revokedTokens.entries()) {
+      if (expMs <= now) revokedTokens.delete(k);
+    }
+  }
+  const expiresAtMs = expSeconds ? expSeconds * 1000 : now + 7 * 24 * 60 * 60 * 1000;
+  revokedTokens.set(hashToken(token), expiresAtMs);
+};
+
+export const isTokenRevoked = (token: string): boolean => {
+  const key = hashToken(token);
+  const expiresAtMs = revokedTokens.get(key);
+  if (!expiresAtMs) return false;
+  if (expiresAtMs <= Date.now()) {
+    revokedTokens.delete(key);
+    return false;
+  }
+  return true;
+};
 
 export const invalidateAdminAuthCache = (adminId?: string): void => {
   if (adminId) {
@@ -56,7 +88,12 @@ export const requireAdmin = async (
   }
 
   try {
-    const decoded = jwt.verify(token, jwtSecret) as AdminPayload;
+    if (isTokenRevoked(token)) {
+      res.status(401).json({ error: "Unauthorized: Token has been revoked" });
+      return;
+    }
+
+    const decoded = jwt.verify(token, jwtSecret, { algorithms: ["HS256"] }) as AdminPayload;
 
     // Fast-path: Check memory cache first
     const cached = adminAuthCache.get(decoded.id);

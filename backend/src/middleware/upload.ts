@@ -22,7 +22,7 @@ export const upload = multer({
     const isAllowedMime = allowedMimes.includes(mime);
     const hasValidExt = Boolean(file.originalname.toLowerCase().match(/\.(jpe?g|png|webp|jfif|avif)$/));
 
-    if (isAllowedMime || hasValidExt) {
+    if (isAllowedMime && hasValidExt) {
       cb(null, true);
     } else {
       cb(new Error("Only JPEG, PNG, WebP, and AVIF images are allowed"));

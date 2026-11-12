@@ -3,10 +3,32 @@ import { BACKEND_BASE_URL, CATALOG_CACHE_HEADERS } from "@/lib/backendUrl";
 
 export const maxDuration = 60;
 
+const ALLOWED_CATALOG_PARAMS = [
+  "category",
+  "sub",
+  "sort",
+  "q",
+  "size",
+  "color",
+  "inStock",
+  "minPrice",
+  "maxPrice",
+  "limit",
+  "section",
+];
+
 export async function GET(req: NextRequest) {
   try {
-    const search = req.nextUrl.search || "";
-    const res = await fetch(`${BACKEND_BASE_URL}/api/products${search}`, {
+    const filtered = new URLSearchParams();
+    for (const key of ALLOWED_CATALOG_PARAMS) {
+      const values = req.nextUrl.searchParams.getAll(key);
+      for (const val of values) {
+        if (val) filtered.append(key, val);
+      }
+    }
+    const query = filtered.toString();
+    const suffix = query ? `?${query}` : "";
+    const res = await fetch(`${BACKEND_BASE_URL}/api/products${suffix}`, {
       next: { revalidate: 300, tags: ["catalog"] },
     });
 

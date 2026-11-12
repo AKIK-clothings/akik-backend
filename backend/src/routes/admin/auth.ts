@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { supabase } from "../../config/supabase";
 import { authLimiter } from "../../middleware/rateLimit";
 import { validateBody, adminLoginSchema } from "../../middleware/validate";
-import { requireAdmin, invalidateAdminAuthCache } from "../../middleware/auth";
+import { requireAdmin, invalidateAdminAuthCache, revokeAdminToken } from "../../middleware/auth";
 
 const router = Router();
 
@@ -48,7 +48,10 @@ router.post("/login", authLimiter, validateBody(adminLoginSchema), async (req: R
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: admin.role || "admin" },
       jwtSecret,
-      { expiresIn: (process.env.JWT_EXPIRES_IN || "7d") as jwt.SignOptions["expiresIn"] }
+      {
+        algorithm: "HS256",
+        expiresIn: (process.env.JWT_EXPIRES_IN || "7d") as jwt.SignOptions["expiresIn"],
+      }
     );
 
     res.cookie("akik_admin_token", token, {
@@ -82,7 +85,10 @@ router.post("/logout", (req: Request, res: Response): void => {
 
   if (token && process.env.JWT_SECRET) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET) as { id?: string };
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        algorithms: ["HS256"],
+      }) as { id?: string; exp?: number };
+      revokeAdminToken(token, decoded?.exp);
       if (decoded?.id) {
         invalidateAdminAuthCache(decoded.id);
       } else {
